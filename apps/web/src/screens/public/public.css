@@ -1,0 +1,38 @@
+/* 公開サイト専用のスタイル */
+.hero { padding: 64px 0 72px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: center; }
+.hero-mock { transform: perspective(1400px) rotateY(-4deg); transform-origin: left center; }
+.hero-mock .mock-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg-subtle); font-size: var(--text-xs); }
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; position: relative; }
+.flow-step { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.flow-step .flow-num { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--muted); }
+.flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -14px; top: 50%; transform: translateY(-50%); color: var(--border-strong); font-size: 18px; }
+.steps-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+.steps-row > div { padding: 18px; border-top: 3px solid var(--primary-tint-strong); }
+.steps-row > div.active { border-top-color: var(--primary); }
+.trust { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.cta-band { padding: 48px; border-radius: var(--radius-lg); background: var(--primary); color: var(--primary-text); display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.cta-band .btn.secondary { background: #fff; color: var(--primary); border-color: #fff; }
+.feature-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 40px 0; border-bottom: 1px solid var(--border); scroll-margin-top: 90px; }
+.feature-section ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; color: var(--muted-strong); }
+.with-toc { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
+.compare-table td, .compare-table th { text-align: center; }
+.compare-table td:first-child, .compare-table th:first-child { text-align: left; }
+.two-col-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two-col-compare ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.two-col-compare li { display: flex; gap: 10px; align-items: flex-start; }
+.legal { max-width: 760px; }
+.contact-grid > * { min-width: 0; }
+.contact-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 40px; align-items: start; }
+@media (max-width: 960px) {
+  .hero-grid, .feature-section, .with-toc, .contact-grid, .two-col-compare { grid-template-columns: minmax(0, 1fr); }
+  .hero-mock { transform: none; }
+  .with-toc .toc { display: none; }
+  .flow, .steps-row, .trust { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow-step::after { display: none; }
+}
+@media (max-width: 560px) {
+  .flow, .steps-row, .trust { grid-template-columns: minmax(0, 1fr); }
+  .cta-band { padding: 28px; }
+  .hero { padding: 36px 0 48px; }
+}

@@ -1,0 +1,123 @@
+/* デザイントークン。色・余白・文字はすべてここで定義し、部品のCSSはこの変数だけを参照する。 */
+:root {
+  color-scheme: light;
+  --font-sans: "Inter", system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --bg: #ffffff;
+  --bg-subtle: #f7f8fa;
+  --bg-sunken: #f1f3f6;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border: #e4e7ec;
+  --border-strong: #cfd4dc;
+  --text: #2b313b;
+  --text-strong: #0d1320;
+  --muted: #7a8291;
+  --muted-strong: #5b6372;
+
+  --primary: #2b63f3;
+  --primary-hover: #1f50d6;
+  --primary-text: #ffffff;
+  --primary-tint: rgba(43, 99, 243, 0.07);
+  --primary-tint-strong: rgba(43, 99, 243, 0.14);
+  --focus: rgba(43, 99, 243, 0.45);
+
+  --tone-pass: hsl(150 65% 28%);
+  --tone-pass-bg: hsl(150 55% 95%);
+  --tone-pass-border: hsl(150 40% 78%);
+  --tone-fail: hsl(0 70% 44%);
+  --tone-fail-bg: hsl(0 85% 97%);
+  --tone-fail-border: hsl(0 55% 84%);
+  --tone-warn: hsl(32 90% 32%);
+  --tone-warn-bg: hsl(45 95% 93%);
+  --tone-warn-border: hsl(40 80% 74%);
+  --tone-info: hsl(220 75% 42%);
+  --tone-info-bg: hsl(220 85% 96%);
+  --tone-info-border: hsl(220 60% 84%);
+  --tone-neutral: hsl(222 8% 36%);
+  --tone-neutral-bg: hsl(220 10% 95%);
+  --tone-neutral-border: hsl(220 8% 84%);
+  --tone-special: hsl(272 55% 42%);
+  --tone-special-bg: hsl(272 70% 96%);
+  --tone-special-border: hsl(272 45% 84%);
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 6px 18px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 18px 48px rgba(16, 24, 40, 0.16);
+  --overlay: rgba(13, 19, 32, 0.42);
+
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+
+  --header-h: 60px;
+  --sidenav-w: 240px;
+  --sidenav-w-collapsed: 60px;
+  --meta-w: 320px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1117;
+  --bg-subtle: #131720;
+  --bg-sunken: #0a0d12;
+  --surface: #161b24;
+  --surface-raised: #1c2230;
+  --border: #262d3a;
+  --border-strong: #353e4f;
+  --text: #d6dbe4;
+  --text-strong: #f4f6fa;
+  --muted: #8b93a3;
+  --muted-strong: #a9b0bd;
+
+  --primary: #5b8cff;
+  --primary-hover: #7aa2ff;
+  --primary-text: #0b1220;
+  --primary-tint: rgba(91, 140, 255, 0.1);
+  --primary-tint-strong: rgba(91, 140, 255, 0.2);
+  --focus: rgba(91, 140, 255, 0.55);
+
+  --tone-pass: hsl(150 55% 58%);
+  --tone-pass-bg: hsl(150 30% 13%);
+  --tone-pass-border: hsl(150 35% 28%);
+  --tone-fail: hsl(0 80% 68%);
+  --tone-fail-bg: hsl(0 35% 15%);
+  --tone-fail-border: hsl(0 40% 32%);
+  --tone-warn: hsl(40 90% 62%);
+  --tone-warn-bg: hsl(35 40% 14%);
+  --tone-warn-border: hsl(40 45% 32%);
+  --tone-info: hsl(218 90% 70%);
+  --tone-info-bg: hsl(218 40% 15%);
+  --tone-info-border: hsl(218 45% 32%);
+  --tone-neutral: hsl(220 8% 72%);
+  --tone-neutral-bg: hsl(220 8% 17%);
+  --tone-neutral-border: hsl(220 8% 30%);
+  --tone-special: hsl(272 75% 74%);
+  --tone-special-bg: hsl(272 35% 16%);
+  --tone-special-border: hsl(272 40% 34%);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.6);
+  --overlay: rgba(0, 0, 0, 0.6);
+}
