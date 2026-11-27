@@ -1,0 +1,174 @@
+openapi: 3.1.0
+info:
+  title: Engineering Platform Demo API
+  version: 0.1.0
+servers:
+  - url: http://127.0.0.1:8080
+security: []
+paths:
+  /healthz:
+    get:
+      summary: Check API liveness
+      operationId: health
+      responses:
+        '204':
+          description: API process is accepting requests
+  /readyz:
+    get:
+      summary: Check database readiness
+      operationId: readiness
+      responses:
+        '204':
+          description: Database query succeeded
+        '503':
+          description: Database is unavailable
+  /api/v1/demo/runs:
+    post:
+      summary: Queue a demo run
+      operationId: createDemoRun
+      description: Available when EP_DEMO_MODE=1. Queues a built-in local snapshot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              additionalProperties: false
+              properties:
+                scenario:
+                  $ref: '#/components/schemas/Scenario'
+      responses:
+        '202':
+          description: Queued
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        '400':
+          description: Malformed JSON
+        '404':
+          description: Demo routes are disabled
+        '413':
+          description: Body exceeds 1 KiB
+        '415':
+          description: Content type must be JSON
+        '422':
+          description: Request failed schema validation
+        '500':
+          description: Persistence operation failed
+  /api/v1/demo/runs/{id}:
+    get:
+      summary: Get a demo run and its audit events
+      operationId: getDemoRun
+      description: Available when EP_DEMO_MODE=1. Decision is null until the worker finishes.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Snapshot, current decision, and audit events in sequence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400':
+          description: Invalid run identifier
+        '404':
+          description: Run does not exist or demo routes are disabled
+        '500':
+          description: Persistence operation failed
+components:
+  schemas:
+    Scenario:
+      type: string
+      enum: [passing, failing, pending, missing]
+    Run:
+      type: object
+      required: [id, scenario, snapshot, decision, events]
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        snapshot:
+          $ref: '#/components/schemas/CheckSnapshot'
+        decision:
+          oneOf:
+            - $ref: '#/components/schemas/Decision'
+            - type: 'null'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+    CheckSnapshot:
+      type: object
+      required: [repository, head_sha, check_runs]
+      properties:
+        repository:
+          type: string
+        head_sha:
+          type: string
+        check_runs:
+          type: array
+          items:
+            type: object
+            required: [name, head_sha, status, conclusion]
+            properties:
+              name:
+                type: string
+              head_sha:
+                type: string
+              status:
+                type: string
+              conclusion:
+                type: [string, 'null']
+    Decision:
+      type: object
+      required: [policy_version, verdict, checks]
+      properties:
+        policy_version:
+          type: string
+        verdict:
+          type: string
+          enum: [passed, blocked]
+        checks:
+          type: array
+          items:
+            type: object
+            required: [name, result]
+            properties:
+              name:
+                type: string
+              result:
+                type: string
+                enum: [passed, missing, ambiguous, incomplete, unsuccessful]
+    AuditEvent:
+      type: object
+      required: [kind, actor, occurred_at]
+      properties:
+        kind:
+          type: string
+          enum: [queued, evaluated]
+        actor:
+          type: string
+          enum: [local-demo, worker]
+        occurred_at:
+          type: string
+          format: date-time
