@@ -96,7 +96,7 @@ export function App() {
   }
 
   return (
-    <>
+    <div className="legacy-demo">
       <header className="topbar">
         <div className="shell topbar-content">
           <span className="brand"><span className="brand-mark" aria-hidden="true">EP</span>Engineering Platform</span>
@@ -197,6 +197,6 @@ export function App() {
           </div>
         </div>
       </main>
-    </>
+    </div>
   );
 }
