@@ -1,9 +1,13 @@
 pub mod decision;
+pub mod deploy;
+pub mod disclosure;
 pub mod evidence;
 pub mod gate;
 pub mod github;
+pub mod outbound;
 pub mod schedule;
 pub mod sync;
+pub mod trade;
 pub mod webhook;
 pub mod workflow;
 
