@@ -6,6 +6,8 @@ x-backend: &backend
     DATABASE_URL: postgres://engineering:local-dev-only@db:5432/engineering
     EP_DEMO_MODE: "1"
     API_BIND: 0.0.0.0:8080
+    # ローカル検証専用の値。本番では秘密情報の管理先から渡す
+    EP_GITHUB_WEBHOOK_SECRET: local-dev-only-webhook-secret
 
 services:
   db:

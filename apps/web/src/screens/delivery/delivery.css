@@ -1,0 +1,18 @@
+/* 画面群 6.24 提出から配備・受入まで（接頭辞 dl-） */
+.dl-check { display: inline-flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.dl-steps { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.dl-steps li { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.dl-steps li:last-child { border-bottom: 0; }
+@media (max-width: 640px) { .dl-steps li { grid-template-columns: 1fr; } }
+.dl-chain { display: flex; flex-direction: column; gap: 0; }
+.dl-chain-step { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; position: relative; padding-bottom: 14px; }
+.dl-chain-step::before { content: ""; position: absolute; left: 11px; top: 22px; bottom: 0; width: 2px; background: var(--border); }
+.dl-chain-step:last-child::before { display: none; }
+.dl-chain-dot { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--tone-pass-bg); color: var(--tone-pass); border: 1px solid var(--tone-pass-border, var(--border)); }
+.dl-chain-dot.missing { background: var(--tone-fail-bg); color: var(--tone-fail); }
+.dl-chain-dot.pending { background: var(--tone-warn-bg); color: var(--tone-warn); }
+.dl-chain-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.dl-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+@media (max-width: 760px) { .dl-flow { grid-template-columns: 1fr; } }
+.dl-flow > div { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.dl-pre { white-space: pre-wrap; font-size: var(--text-sm); margin: 0; }

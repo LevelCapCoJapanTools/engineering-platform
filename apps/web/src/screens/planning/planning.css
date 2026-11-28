@@ -1,0 +1,29 @@
+/* 計画と管理（J-01〜J-09）専用の補助スタイル */
+.pl-next-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pl-next-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.pl-next-list li:last-child { border-bottom: 0; }
+.pl-next-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; }
+.pl-plan-section { scroll-margin-top: calc(var(--header-h) + 16px); }
+.pl-plan-toc { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-plan-toc a { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: var(--text-2xs); color: var(--muted-strong); text-decoration: none; }
+.pl-plan-toc a.ng { border-color: var(--tone-warn-border); color: var(--tone-warn); background: var(--tone-warn-bg); }
+.pl-sow-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+@media (max-width: 1100px) { .pl-sow-split { grid-template-columns: minmax(0, 1fr); } }
+.pl-doc { padding: var(--space-6); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-sm); max-height: 640px; overflow: auto; }
+.pl-gantt-scale { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--space-3); font-size: var(--text-2xs); color: var(--muted); }
+.pl-gantt-scale .ticks { position: relative; height: 16px; }
+.pl-gantt-scale .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.pl-gantt-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--tone-fail); border-radius: 2px; }
+.pl-heat-legend { display: flex; gap: 10px; align-items: center; font-size: var(--text-2xs); color: var(--muted); flex-wrap: wrap; }
+.pl-heat-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -2px; }
+.pl-decision { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+/* 2026-11-28 追加 */
+.pl-source-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.pl-kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.pl-concern { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.pl-concern:last-child { border-bottom: 0; }
+.pl-pva { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.pl-pva-bar { position: relative; height: 8px; border-radius: 4px; background: var(--tone-neutral-bg); overflow: hidden; }
+.pl-pva-bar > span { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; background: var(--tone-info); }
+.pl-pva-bar > i { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); }
+.pl-hist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

@@ -1,0 +1,10 @@
+/* 証跡と監査（V-01〜V-08）の画面固有スタイル */
+.audit-chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.audit-chain > li { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0 10px 16px; border-left: 2px solid var(--border); position: relative; min-width: 0; }
+.audit-chain > li::before { content: ""; position: absolute; left: -6px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--primary); }
+.audit-chain-step { font-size: var(--text-xs); color: var(--muted); font-weight: 600; padding-top: 2px; }
+.audit-hash-cell { max-width: 200px; }
+.audit-chain-broken { background: var(--tone-fail-bg); }
+@media (max-width: 640px) {
+  .audit-chain > li { grid-template-columns: 1fr; gap: 4px; }
+}

@@ -1,0 +1,43 @@
+/* 要求・設計・トレーサビリティ画面のローカルスタイル。値は tokens.css の変数のみを使う。 */
+.presence { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); white-space: nowrap; }
+.presence.ok { color: var(--tone-pass); }
+.presence.ng { color: var(--tone-fail); }
+.ai-count { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; border: 1px dashed var(--tone-special-border); background: var(--tone-special-bg); color: var(--tone-special); font-size: var(--text-2xs); font-weight: 600; white-space: nowrap; }
+.criteria-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.criteria-list li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.criteria-list .num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--primary-tint); color: var(--primary); font-size: var(--text-2xs); font-weight: 700; }
+.criteria-list input { border: 0; background: transparent; outline: none; width: 100%; font-size: var(--text-sm); color: var(--text-strong); }
+.review-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: var(--space-5); align-items: start; }
+.review-split .sticky { position: sticky; top: calc(var(--header-h) + 16px); }
+@media (max-width: 1100px) { .review-split { grid-template-columns: minmax(0, 1fr); } .review-split .sticky { position: static; } }
+.finding-group { display: flex; flex-direction: column; gap: 10px; }
+.finding-group h3 { font-size: var(--text-xs); color: var(--muted-strong); display: flex; align-items: center; gap: 6px; }
+.run-info { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--text-xs); color: var(--muted); }
+.run-info strong { color: var(--text-strong); font-weight: 600; }
+.trace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
+@media (max-width: 1100px) { .trace-layout { grid-template-columns: minmax(0, 1fr); } }
+.cluster-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.cluster { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.cluster .count { font-size: var(--text-xl); font-weight: 700; color: var(--text-strong); }
+.cluster.missing { border-style: dashed; border-color: var(--tone-fail-border); background: var(--tone-fail-bg); }
+.cluster.missing .count { color: var(--tone-fail); }
+@media (max-width: 860px) { .cluster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.adr-section { display: flex; flex-direction: column; gap: 6px; }
+.adr-section h3 { font-size: var(--text-xs); color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.result-dot { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); white-space: nowrap; }
+.result-dot.passed { color: var(--tone-pass); }
+.result-dot.failed { color: var(--tone-fail); }
+.result-dot.skipped, .result-dot.notRun { color: var(--muted); }
+.result-dot.conditional { color: var(--tone-warn); }
+.approval-row-warn td { background: var(--tone-warn-bg); }
+.selection-bar { display: flex; align-items: center; gap: var(--space-3); padding: 8px 12px; border-radius: var(--radius); background: var(--primary-tint); color: var(--primary); font-size: var(--text-xs); font-weight: 600; }
+.req-ai-row td { background: var(--tone-special-bg); }
+.req-chain { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.req-chain .cluster { min-width: 0; }
+@media (max-width: 1100px) { .req-chain { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .req-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.req-criteria-diff { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.req-criteria-diff li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-size: var(--text-sm); }
+.req-criteria-diff li.add { background: var(--tone-pass-bg); border-color: var(--tone-pass-border); }
+.req-criteria-diff li.del { background: var(--tone-fail-bg); border-color: var(--tone-fail-border); text-decoration: line-through; }
+.req-mono-pre { white-space: pre-wrap; font-size: var(--text-sm); margin: 0; }

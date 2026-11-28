@@ -1,0 +1,31 @@
+/* 契約と知的資産（画面群 6.22）。クラス名は ct- で始める */
+.ct-clauses { --gap: 12px; }
+.ct-clause { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ct-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ct-diff > div { min-width: 0; }
+.ct-diff p { margin: 4px 0 0; padding: 8px 10px; border-radius: var(--radius-sm); font-size: var(--text-sm); }
+.ct-before { background: var(--tone-fail-bg); text-decoration: line-through; text-decoration-color: var(--tone-fail); color: var(--muted-strong); }
+.ct-after { background: var(--tone-pass-bg); }
+.ct-prior { display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--tone-special-bg); color: var(--text); }
+.ct-comments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.ct-comments p { margin: 4px 0 0 28px; }
+.ct-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ct-two > section { min-width: 0; }
+.ct-h { font-size: var(--text-sm); font-weight: 600; margin: 0; }
+.ct-line { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.ct-share { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--tone-neutral-bg); max-width: 420px; }
+.ct-share-seg.s0, .ct-dot.s0 { background: var(--tone-info); }
+.ct-share-seg.s1, .ct-dot.s1 { background: var(--tone-special); }
+.ct-share-seg.s2, .ct-dot.s2 { background: var(--tone-warn); }
+.ct-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.ct-bad { color: var(--tone-fail); font-weight: 600; }
+.ct-legal { display: flex; align-items: center; gap: 4px; }
+.ct-kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
+.ct-kv-grid > div { min-width: 0; }
+.ct-kv-grid dt { font-size: var(--text-xs); color: var(--muted); }
+.ct-kv-grid dd { margin: 2px 0 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .ct-diff, .ct-two { grid-template-columns: 1fr; }
+}
+.ct-row { padding: 10px 16px; text-decoration: none; color: inherit; }
+.ct-row:hover { background: var(--bg-sunken); }

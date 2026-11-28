@@ -1,0 +1,36 @@
+/* 外部利用者向け画面（X-01〜X-05）専用のレイアウト */
+.assessor-grid { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.assessor-toc { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 96px); overflow: auto; }
+.assessor-toc button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 10px; border: 0; border-left: 2px solid var(--border); background: none; text-align: left; cursor: pointer; color: var(--text); font-size: var(--text-xs); }
+.assessor-toc button:hover { background: var(--primary-tint); }
+.assessor-toc button.active { border-left-color: var(--primary); background: var(--primary-tint); color: var(--primary); }
+@media (max-width: 860px) {
+  .assessor-grid { grid-template-columns: minmax(0, 1fr); }
+  .assessor-toc { position: static; flex-direction: row; overflow-x: auto; max-height: none; }
+  .assessor-toc button { border-left: 0; border-bottom: 2px solid var(--border); min-width: 150px; }
+  .assessor-toc button.active { border-bottom-color: var(--primary); }
+}
+.org-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+
+/* 顧客ポータルの拡張（X-01, X-07〜X-11。接頭辞 cp-） */
+.cp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cp-list > li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cp-list > li.row { flex-direction: row; }
+.cp-sched { flex-direction: row !important; flex-wrap: wrap; align-items: center; gap: 8px !important; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.cp-sched:last-child { border-bottom: 0; padding-bottom: 0; }
+.cp-route { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.cp-route-step { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 180px; flex: 1 1 180px; }
+.cp-route-step.waiting { border-color: var(--tone-warn-border, var(--tone-warn)); background: var(--tone-warn-bg); }
+.cp-route-step.done { background: var(--tone-pass-bg); }
+.cp-route-num { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); font-size: 11px; font-weight: 600; }
+.cp-route-step.done .cp-route-num { background: var(--tone-pass); color: #fff; border-color: var(--tone-pass); }
+.cp-request { display: flex; flex-direction: column; gap: 8px; text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+.cp-request:hover { border-color: var(--primary); }
+.cp-request-meta { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.cp-request-meta > span { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.cp-note { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.cp-thread { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cp-thread > li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: var(--radius); background: var(--bg-subtle); max-width: 85%; }
+.cp-thread > li.mine { align-self: flex-end; background: var(--primary-tint); }
+.cp-uat { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.cp-uat:last-child { border-bottom: 0; padding-bottom: 0; }

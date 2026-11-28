@@ -1,0 +1,22 @@
+/* 案件窓口（H 画面群）。接頭辞 dk- */
+.dk-fallback { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface); }
+.dk-thread { display: flex; flex-direction: column; gap: var(--space-3); }
+.dk-msg { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); max-width: 88%; min-width: 0; }
+.dk-msg.out { align-self: flex-end; background: var(--primary-tint, var(--tone-info-bg)); }
+.dk-msg.internal { align-self: center; max-width: 100%; border-style: dashed; background: var(--tone-neutral-bg); }
+.dk-msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.dk-msg-body { font-size: var(--text-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dk-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.dk-checks li { display: flex; gap: 8px; align-items: flex-start; font-size: var(--text-sm); }
+.dk-checks li .ok { color: var(--tone-pass); }
+.dk-checks li .ng { color: var(--tone-fail); }
+.dk-draft { white-space: pre-wrap; font-size: var(--text-sm); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-subtle); overflow-wrap: anywhere; }
+.dk-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dk-steps li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: var(--text-xs); }
+.dk-steps li.cancelled span.dk-step-text { text-decoration: line-through; color: var(--muted); }
+.dk-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.dk-two > * { min-width: 0; }
+@media (max-width: 860px) { .dk-two { grid-template-columns: 1fr; } }
+.dk-report { display: flex; flex-direction: column; gap: 8px; }
+.dk-report li { font-size: var(--text-sm); }
+.dk-report-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }

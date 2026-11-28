@@ -14,7 +14,9 @@ Docker EngineとDocker Compose v2以降を使います。
 docker compose up --build --detach --wait
 ```
 
-ブラウザで [http://127.0.0.1:5173](http://127.0.0.1:5173) を開きます。「すべて成功」「チェック失敗」「チェック実行中」「チェックが欠落」のいずれかを選び、判定結果と監査ログを確認します。APIの既定ポートは8080、PostgreSQLのホスト側ポートは55432です。ポートを変更する場合は `.env.example` を `.env` にコピーして編集してください。
+ブラウザで [http://127.0.0.1:5173/#/demo](http://127.0.0.1:5173/#/demo) を開きます。「すべて成功」「チェック失敗」「チェック実行中」「チェックが欠落」のいずれかを選び、判定結果と監査ログを確認します。APIの既定ポートは8080、PostgreSQLのホスト側ポートは55432です。ポートを変更する場合は `.env.example` を `.env` にコピーして編集してください。
+
+製品の全画面のモックは [http://127.0.0.1:5173/#/screens](http://127.0.0.1:5173/#/screens) から開けます。部品の一覧は `#/catalog` です。モックはサンプルデータだけで動き、APIには接続しません。各画面の左下の切替で、空・エラー・権限なしなどの状態を表示できます。画面の直接の利用者は、受注側の経営層（JV責任者）、発注企業、フリーエンジニアと、サービスの案件窓口です。受注側の社内の PM や開発者の活動は、既存システムから同期した値として表示します。フリーエンジニアの画面は `#/f`、発注企業の顧客ポータルは `#/portal/order-renewal` から開けます。画面仕様は [Webデザイン依頼書](docs/design/design-request.md)、[機能ギャップ調査](docs/reserch/gap-analysis-vse-iso29110.md)の各項目と画面の対応は [ギャップ対応表](docs/design/gap-coverage.md)、[追加・修正案](docs/reserch/executive-freelancer-service-proposal.md)の改修60件の対応は [追補の対応表](docs/design/proposal-coverage.md) を参照してください。
 
 ```sh
 docker compose ps
@@ -49,5 +51,7 @@ DATABASE_URL=postgres://engineering:local-dev-only@127.0.0.1:55432/engineering \
 ```
 
 全サービスの起動後、ルートで `node scripts/smoke.mjs` を実行すると、Webプロキシ経由で4シナリオを処理し、証跡まで検証します。ポートを変えた場合は `API_URL` と `WEB_URL` を指定してください。
+
+GitHub Webhook の受信口 `POST /api/v1/webhooks/github` は、環境変数 `EP_GITHUB_WEBHOOK_SECRET` を設定したときだけ有効になります。署名（`X-Hub-Signature-256`）を検証できない配信は保存せず、同じ配信IDの再送と、同じリソースの古い版は状態に反映しません。Compose ではローカル検証専用の値を設定しており、スモークテストがこの動作も確認します。
 
 ComposeをDBだけに使う場合は、上記の `DATABASE_URL` と `EP_DEMO_MODE=1` を設定し、別ターミナルで `cargo run --locked -p server` と `cargo run --locked -p worker` を順に起動します。最後に `apps/web` で `npm run dev` を起動します。
