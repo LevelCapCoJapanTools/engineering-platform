@@ -4,7 +4,8 @@ import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import type { Requirement } from "../../lib/types";
 import { ARTIFACT_STATUS } from "../../lib/vocab";
-import { requirements, userById } from "../../mocks/core";
+import { requirements } from "../../mocks/core";
+import { reqSource } from "../../mocks/requirements";
 import {
   Button,
   CoverageMeter,
@@ -20,10 +21,12 @@ import {
   Tag,
   Timestamp,
   useToast,
-  UserChip,
+  ExternalActor,
+  SourceTag,
+  StaleDataNotice,
 } from "../../ui";
 import type { Column } from "../../ui";
-import { KIND_LABEL, org, Presence, PriorityTag, project, reqPath, traceCoverage } from "./common";
+import { KIND_LABEL, OpenInSource, org, Presence, PriorityTag, project, reqFile, reqMeta, reqPath, traceCoverage, ViewOnlyNote } from "./common";
 
 const FILTERS = [
   { key: "status", label: "状態", options: Object.entries(ARTIFACT_STATUS).map(([value, v]) => ({ value, label: v.label })) },
@@ -40,7 +43,11 @@ export function requirementColumns(): Column<Requirement>[] {
     { key: "kind", header: "種類", render: (r) => <Tag square>{KIND_LABEL[r.kind]}</Tag>, sortValue: (r) => r.kind },
     { key: "priority", header: "優先度", render: (r) => <PriorityTag value={r.priority} />, sortValue: (r) => ({ high: 0, medium: 1, low: 2 })[r.priority] },
     { key: "status", header: "状態", render: (r) => <StatusBadge vocab={ARTIFACT_STATUS[r.status]} size="sm" />, sortValue: (r) => r.status },
-    { key: "owner", header: "担当者", render: (r) => <UserChip user={userById(r.owner_id)} showRole={false} plain /> },
+    { key: "owner", header: "担当者", render: (r) => <ExternalActor userId={r.owner_id} /> },
+    { key: "source", header: "出典", render: (r) => <span className="tiny">{r.source || "—"}</span>, defaultHidden: true },
+    { key: "file", header: "正本", render: (r) => <span className="mono tiny muted">{reqFile(r.id)}</span>, defaultHidden: true },
+    { key: "approved", header: "承認版", render: (r) => { const m = reqMeta(r); return m.approved_version ? <span className="row nowrap" style={{ ["--gap" as string]: "4px" }}><span className="mono small">v{m.approved_version}</span>{m.approved_version !== r.version ? <Tag tone="warn" square>v{r.version} 再承認待ち</Tag> : null}</span> : <span className="muted small">—</span>; }, sortValue: (r) => reqMeta(r).approved_version ?? 0 },
+    { key: "approvers", header: "承認者", render: (r) => { const a = reqMeta(r).approvals.filter((x) => x.version === r.version && x.status !== "invalid"); return a.length ? <span className="tiny">{a.map((x) => `${x.role}${x.status === "approved" ? "✓" : x.status === "returned" ? "差戻し" : "（未）"}`).join(" / ")}</span> : <span className="muted small">—</span>; }, defaultHidden: true },
     { key: "ac", header: "受入基準", render: (r) => <Presence ok={r.acceptance_criteria.length > 0} label={r.acceptance_criteria.length ? `${r.acceptance_criteria.length}件` : "なし"} />, sortValue: (r) => r.acceptance_criteria.length },
     { key: "design", header: "設計", render: (r) => <Presence ok={r.design_ids.length > 0} /> },
     { key: "test", header: "テスト", render: (r) => <Presence ok={r.test_ids.length > 0} /> },
@@ -75,14 +82,17 @@ export function RequirementListBody({ state, selected, onSelect }: { state: stri
     <>
       <PageHeader
         title="要求"
-        description="REQ-ID ごとの状態、受入基準、設計・テストへのつながりを管理します。"
+        description="REQ-ID ごとの状態、承認版、受入基準、設計・テストへのつながりを確認します。要求の正本は Git リポジトリの docs/requirements で、ここには同期した内容を表示します。"
+        meta={<SourceTag source={state === "stale" ? { provider: "github", label: "docs/requirements", synced_at: "2026-11-26T18:00:00+09:00", status: "delayed" } : reqSource(`docs/requirements（${requirements.length}件）`)} />}
         actions={
           <>
             <Button icon="download" onClick={() => toast({ kind: "success", message: "要求一覧の CSV を出力しました（12件）" })}>CSV 出力</Button>
-            <Button variant="primary" icon="plus" to={reqPath("new")}>要求を作成</Button>
+            <OpenInSource />
           </>
         }
       />
+      {state === "stale" ? <StaleDataNotice sources={[{ name: "要求（docs/requirements）", source: { provider: "github", synced_at: "2026-11-26T18:00:00+09:00", status: "delayed" } }]} action={<Button size="sm" to={paths.connectors(org)}>連携の状態を見る</Button>} /> : null}
+      <ViewOnlyNote />
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 360px)", alignItems: "center" }}>
         <FilterBar filters={FILTERS} values={values} onChange={(k, v) => setValues((x) => ({ ...x, [k]: v }))} search={search} onSearch={setSearch} searchPlaceholder="ID・タイトル・本文で絞り込み" />
         <div className="card tight">
@@ -92,7 +102,7 @@ export function RequirementListBody({ state, selected, onSelect }: { state: stri
       {sel.length ? (
         <div className="selection-bar">
           <span>{sel.length}件を選択中</span>
-          <Button size="sm" variant="primary" icon="arrowRight" onClick={() => navigate(`${paths.requirementApproval(org, project)}?ids=${sel.join(",")}`)}>承認を依頼</Button>
+          <Button size="sm" variant="primary" icon="arrowRight" onClick={() => navigate(`${paths.requirementApproval(org, project)}?ids=${sel.join(",")}`)}>承認者に依頼</Button>
           <Button size="sm" variant="ghost" onClick={() => choose([])}>選択を解除</Button>
         </div>
       ) : null}
@@ -111,7 +121,7 @@ export function RequirementListBody({ state, selected, onSelect }: { state: stri
           onSelect={choose}
           empty={
             state === "empty" ? (
-              <EmptyState icon="list" title="まだ要求がありません" description="要求を作成するか、SOW から AI が抽出した要求候補を登録してください。" action={<div className="row"><Button variant="primary" icon="plus" to={reqPath("new")}>要求を作成</Button><Button icon="fileText" to={paths.sow(org, project)}>SOW から登録</Button></div>} />
+              <EmptyState icon="list" title="同期された要求がありません" description="正本（docs/requirements）に要求がないか、リポジトリが連携されていません。担当者が正本で要求を作成すると、ここに表示されます。" action={<div className="row"><Button icon="plug" to={paths.connectors(org)}>連携を確認</Button><Button icon="fileText" to={paths.sow(org, project)}>SOW を見る</Button></div>} />
             ) : (
               <EmptyState variant="filtered" title="条件に一致する要求はありません" description="絞り込み条件を変更するか、条件をクリアしてください。" action={<Button onClick={() => { setValues({}); setSearch(""); }}>条件をクリア</Button>} />
             )

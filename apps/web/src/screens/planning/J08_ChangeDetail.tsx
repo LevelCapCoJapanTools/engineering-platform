@@ -1,4 +1,6 @@
 // 画面ID: J-08 変更要求の詳細
+// 影響（要求・設計・テスト・費用・スケジュール）を確認する。AI の影響候補は参考で、確定はアナリスト・設計者が正本で行う。
+// 承認は実務の承認者（PM・顧客）が行い、費用や納期の判断が必要なものは経営判断（M-02）へ回る。
 import { useState } from "react";
 import {
   AIFindingCard,
@@ -10,14 +12,16 @@ import {
   CommentThread,
   DetailLayout,
   ErrorState,
+  ExternalActor,
   IdLink,
   KeyValueList,
   MetaSection,
-  MoreMenu,
   PageHeader,
   ProjectLayout,
+  ResponsibilitySplit,
   Section,
   Skeleton,
+  StatCard,
   StateFlow,
   StatusBadge,
   Tabs,
@@ -25,8 +29,6 @@ import {
   Timeline,
   TraceGraph,
   TraceLegend,
-  UserChip,
-  membersWithRole,
   useToast,
 } from "../../ui";
 import type { TraceEdge, TraceNode } from "../../ui";
@@ -36,12 +38,12 @@ import { CHANGE_STATUS } from "../../lib/vocab";
 import type { ChangeStatus } from "../../lib/vocab";
 import type { AiFinding, Approver } from "../../lib/types";
 import { aiFindings, changes, userById } from "../../mocks/core";
-import { changeDetails } from "../../mocks/planning";
-import { orgOf, projectOf } from "./shared";
+import { PLAN_SOURCE, changeDetails, changeImpacts } from "../../mocks/planning";
+import { DecisionLink, SourceBar, orgOf, projectOf } from "./shared";
 
-export const J08_STATES = ["影響分析中", "承認待ち", "承認待ち（顧客として表示）", "承認済み", "反映済み", "却下", "AI分析中", "AI無効", "読み込み中", "取得失敗"];
+export const J08_STATES = ["影響分析中", "承認待ち", "承認済み", "反映済み", "却下", "AI分析中", "AI無効", "読み込み中", "取得失敗"];
 
-const STATE_TO_STATUS: Record<string, ChangeStatus> = { 影響分析中: "analyzing", 承認待ち: "pending", "承認待ち（顧客として表示）": "pending", 承認済み: "approved", 反映済み: "applied", 却下: "rejected" };
+const STATE_TO_STATUS: Record<string, ChangeStatus> = { 影響分析中: "analyzing", 承認待ち: "pending", 承認済み: "approved", 反映済み: "applied", 却下: "rejected" };
 
 const extraFindings: AiFinding[] = [
   { ...aiFindings.find((f) => f.id === "AIF-160")!, id: "AIF-161", target_id: "TC-0110", excerpt: "TC-0110 50万円以上で2段階承認になる", highlight: "50万円以上", explanation: "上限判定を税込に変えると、2段階承認の閾値判定（税抜）との整合を確認する必要があります。", suggestion: "TC-0110 に税込・税抜の境界値ケースを追加する。", confidence: 0.69 },
@@ -59,6 +61,7 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
   const [tab, setTab] = useState(state === "影響分析中" || state === "AI分析中" || state === "AI無効" ? "impact" : "content");
   const findings = [aiFindings.find((f) => f.id === "AIF-160")!, ...extraFindings];
   const filer = userById(cr.filed_by);
+  void toast;
 
   const approvers: Approver[] =
     status === "approved" || status === "applied"
@@ -85,12 +88,8 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
     { from: "CR-0004", to: "設計なし" },
   ];
 
-  const primary =
-    status === "analyzing" ? (
-      <Button variant="primary" icon="mail" onClick={() => toast({ kind: "success", message: "PM と顧客に承認を依頼しました" })}>承認を依頼</Button>
-    ) : status === "approved" ? (
-      <Button variant="primary" icon="check" onClick={() => toast({ kind: "success", message: "反映済みにしました" })}>反映済みにする</Button>
-    ) : null;
+  const impact = changeImpacts[cr.id] ?? changeImpacts["CR-0004"];
+  const primary = impact.decision ? <Button variant="primary" icon="inbox" to={paths.decision(org, impact.decision)}>経営判断を開く</Button> : null;
 
   return (
     <ProjectLayout org={org} project={pr} active="changes" trail={[{ label: "変更要求", to: paths.changes(org, pr) }, { label: cr.id }]}>
@@ -106,9 +105,8 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
         }
         actions={
           <>
-            <Button icon="sparkles" onClick={() => { setTab("impact"); toast({ kind: "info", message: "AIによる影響分析を開始しました（参考情報）" }); }}>AIで影響を分析</Button>
             {primary}
-            <MoreMenu items={[{ label: "要求を更新", icon: "edit", onClick: () => { window.location.hash = paths.requirement(org, pr, "REQ-0012"); } }, { label: "取り下げ", icon: "x", danger: true }]} />
+            <Button icon="external">正本で開く</Button>
           </>
         }
       />
@@ -120,7 +118,24 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
         <DetailLayout
           main={
             <>
-              {status === "applied" ? <Banner tone="pass" title="この変更は反映済みです">REQ-0012 v2 に反映されました。</Banner> : null}
+              {status === "applied" ? <Banner tone="pass" title="この変更は反映済みです">{impact.result ?? "REQ-0012 v2 に反映されました。"}</Banner> : null}
+              <SourceBar source={PLAN_SOURCE} note="起票・承認は顧客ポータルと課題・計画管理から同期" />
+              <Section title="影響の内訳" sub="アナリスト・設計者・PM が確定した値">
+                <div className="grid auto-fit">
+                  <StatCard label="要求" value={impact.requirements} unit="件" />
+                  <StatCard label="設計" value={impact.designs} unit="件" />
+                  <StatCard label="テスト" value={impact.tests} unit="件" />
+                  <StatCard label="費用" value={impact.cost_yen === 0 ? "なし" : `${impact.cost_yen > 0 ? "+" : ""}${(impact.cost_yen / 10000).toLocaleString("ja-JP")}`} unit={impact.cost_yen === 0 ? undefined : "万円"} tone={impact.cost_yen >= 1_000_000 ? "warn" : undefined} />
+                  <StatCard label="スケジュール" value={impact.schedule_days === 0 ? "影響なし" : `+${impact.schedule_days}`} unit={impact.schedule_days === 0 ? undefined : "日"} tone={impact.schedule_days > 0 ? "warn" : undefined} />
+                </div>
+              </Section>
+              <Section title="責任の分担">
+                <ResponsibilitySplit
+                  decide={impact.decision ? <DecisionLink org={org} id={impact.decision} /> : <span className="small">経営判断は不要（費用・納期の影響がしきい値未満）</span>}
+                  act={<span className="row" style={{ ["--gap" as string]: "8px" }}>{d.approvers.map((a) => <ExternalActor key={a.role} userId={a.user_id} role={a.role} />)}</span>}
+                  note="変更の承認は PM と顧客が行います。経営層は追加費用の受け入れなど投資の判断を行います"
+                />
+              </Section>
               <Tabs value={tab} onChange={setTab} tabs={[{ value: "content", label: "内容" }, { value: "impact", label: "影響分析", count: d.confirmed.length + findings.length }, { value: "history", label: "履歴" }, { value: "comments", label: "コメント", count: 1 }]} />
               {tab === "content" ? (
                 <Section title="変更の内容">
@@ -128,7 +143,7 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
                     items={[
                       { label: "変更内容", value: d.description },
                       { label: "理由", value: d.reason },
-                      { label: "起票者", value: <UserChip user={filer} /> },
+                      { label: "起票者", value: <ExternalActor userId={cr.filed_by} /> },
                       { label: "希望時期", value: d.desired },
                       { label: "見積りへの影響", value: d.estimate },
                       { label: "スケジュールへの影響", value: d.schedule },
@@ -147,24 +162,22 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
                               <td><IdLink id={c.id} to={paths.requirement(org, pr, c.id)} /></td>
                               <td><Tag square>{c.kind}</Tag></td>
                               <td>{c.title}</td>
-                              <td><UserChip user={userById("u-takahashi")} plain /></td>
+                              <td><ExternalActor userId="u-takahashi" /></td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   </Section>
-                  <Section title="AIの影響候補" sub="「影響ありとして確定」または「影響なし」で判断してください">
+                  <Section title="AIの影響候補" sub="参考情報です。確定はアナリスト・設計者が正本で行います（ここでは参照のみ）">
                     {state === "AI分析中" ? (
                       <div className="row"><span className="spinner" /><span className="muted">影響を分析しています…</span></div>
                     ) : state === "AI無効" ? (
                       <AIUnavailableNotice reason="orgDisabled" />
                     ) : (
                       <div className="stack" style={{ ["--gap" as string]: "10px" }}>
-                        <AISectionHead count={findings.length} note="採用すると確定した影響に追加されます" />
-                        {findings.map((f) => (
-                          <AIFindingCard key={f.id} finding={f} onDecide={(_, dec) => toast({ kind: "success", message: dec === "adopted" ? `${f.target_id} を影響ありとして確定しました` : `${f.target_id} は影響なしとしました` })} />
-                        ))}
+                        <AISectionHead count={findings.length} note="AI の候補だけの項目は「確定」に含めません" />
+                        {findings.map((f) => <AIFindingCard key={f.id} finding={f} />)}
                       </div>
                     )}
                   </Section>
@@ -196,24 +209,21 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
                   stacked
                   items={[
                     { label: "状態", value: <StatusBadge vocab={CHANGE_STATUS[status]} size="sm" /> },
-                    { label: "起票者", value: <UserChip user={filer} /> },
+                    { label: "起票者", value: <ExternalActor userId={cr.filed_by} /> },
                     { label: "起票日時", value: "2026-11-26 15:20 JST" },
                     { label: "影響範囲", value: `確定 ${d.confirmed.length}件 · AI候補 ${findings.length}件` },
                   ]}
                 />
               </MetaSection>
-              <MetaSection title="承認">
-                {status === "analyzing" ? (
-                  <span className="small muted">影響分析の完了後に承認を依頼できます。</span>
-                ) : null}
-                <ApprovalPanel
-                  approvers={approvers}
-                  canDecide={state === "承認待ち（顧客として表示）"}
-                  blockedReason={state === "承認待ち" ? "あなた（PM）の承認は顧客の承認後に行います" : undefined}
-                  eligible={state === "承認待ち" ? membersWithRole("顧客") : undefined}
-                  onDecide={(dec) => toast({ kind: dec === "approved" ? "success" : "info", message: dec === "approved" ? "変更要求を承認しました" : "変更要求を却下しました" })}
-                />
+              <MetaSection title="実務の承認（参照のみ）">
+                {status === "analyzing" ? <span className="small muted">影響分析の完了後に、PM が承認を依頼します。</span> : null}
+                <ApprovalPanel approvers={approvers} canDecide={false} blockedReason="承認は PM と顧客が行います。顧客には期限付きの承認リンクで依頼されます" />
               </MetaSection>
+              {impact.result ? (
+                <MetaSection title="反映結果">
+                  <span className="small">{impact.result}</span>
+                </MetaSection>
+              ) : null}
               <MetaSection title="関連">
                 <IdLink id="REQ-0012" to={paths.requirement(org, pr, "REQ-0012")} title="発注金額の上限を取引先ごとに設定できる" />
                 <IdLink id="CTL-PM-004" to={paths.control(org, pr, "CTL-PM-004")} title="変更要求が記録され、影響を評価したうえで承認されている" />

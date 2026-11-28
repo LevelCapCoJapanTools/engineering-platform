@@ -1,9 +1,12 @@
 // 画面ID: S-03 連携
 import { useScreenState } from "../../lib/router";
-import { ORG } from "../../lib/paths";
+import { ORG, paths } from "../../lib/paths";
+import { CONNECTOR_CATEGORY } from "../../lib/vocab";
+import type { ConnectorCategory } from "../../lib/vocab";
+import { connectors } from "../../mocks/portfolio";
 import { repos } from "../../mocks/core";
 import { githubInstallation } from "../../mocks/settings";
-import { Banner, Button, CodeRef, ErrorState, Icon, Section, SettingsLayout, Skeleton, Tag, Timestamp } from "../../ui";
+import { Banner, Button, CodeRef, ErrorState, Icon, ProviderBadge, Section, SettingsLayout, Skeleton, SyncBadge, Tag, Timestamp } from "../../ui";
 
 export function S03Integrations({ org = ORG }: { org?: string }) {
   const state = useScreenState();
@@ -23,13 +26,41 @@ export function S03Integrations({ org = ORG }: { org?: string }) {
   );
 
   return (
-    <SettingsLayout org={org} active="integrations" title="連携" description="Git サービスと接続し、PR のイベントを受け取ってゲートの判定を返します。">
+    <SettingsLayout org={org} active="integrations" title="連携" description="外部サービスとの接続の概要です。以下の GitHub の節は、ゲートの判定を返すための GitHub App の設定です。">
       {state === "読み込み中" ? (
         <Skeleton variant="detail" />
       ) : state === "エラー" ? (
         <ErrorState />
       ) : (
         <>
+          <Section
+            title="連携の全体"
+            sub="計画・カレンダー・コードホスティング・CI・通知・オンコール・証跡の保管先との接続は「連携と同期」でまとめて管理します"
+            actions={<Button variant="primary" icon="plug" to={paths.connectors(org)}>連携と同期を開く</Button>}
+          >
+            <div className="grid auto-fit">
+              {(["planning", "calendar", "scm", "ci", "chat", "oncall", "storage"] as ConnectorCategory[]).map((cat) => {
+                const items = connectors.filter((c) => c.category === cat);
+                const bad = items.filter((c) => c.status === "failing" || c.status === "authExpired" || c.status === "delayed");
+                return (
+                  <div key={cat} className="card tight stack" style={{ ["--gap" as string]: "6px" }}>
+                    <strong className="small">{CONNECTOR_CATEGORY[cat].label}</strong>
+                    {items.length === 0 ? (
+                      <span className="tiny muted">未接続</span>
+                    ) : (
+                      items.map((c) => (
+                        <span key={c.id} className="row between nowrap" style={{ ["--gap" as string]: "6px" }}>
+                          <ProviderBadge provider={c.provider} size="sm" />
+                          <SyncBadge status={c.status} />
+                        </span>
+                      ))
+                    )}
+                    {bad.length ? <span className="tiny text-fail">{bad.length} 件に対応が必要</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
           {!connected ? (
             <Banner tone="fail" title="GitHub App との接続が切れています" action={<Button variant="primary" icon="github">GitHub で再インストール</Button>}>
               2026-11-26 に App がアンインストールされました。新しい PR にはゲートの判定が表示されません。過去の判定と証跡は保持されています。

@@ -2,16 +2,64 @@
 import "./public.css";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { AIFindingCard, ApprovalPanel, Button, ChecklistPanel, EvidenceItem, ExceptionSummary, GateSummaryStrip, Icon, PublicLayout, ShareLinkPanel, StatusBadge, TraceGraph } from "../../ui";
+import { AIFindingCard, ApprovalPanel, Button, ChecklistPanel, EvidenceItem, ExceptionSummary, GateSummaryStrip, Icon, PlanDates, ProviderBadge, PublicLayout, ResponsibilitySplit, RoadmapTimeline, ShareLinkPanel, SourceTag, StatusBadge, TraceGraph } from "../../ui";
 import type { IconName } from "../../ui";
 import { paths } from "../../lib/paths";
 import { useRoute } from "../../lib/router";
-import { ARTIFACT_STATUS } from "../../lib/vocab";
-import { aiFindings, evidence, exceptions, gateRuns } from "../../mocks/core";
+import { ARTIFACT_STATUS, DECISION_STATUS, HEALTH } from "../../lib/vocab";
+import { aiFindings, evidence, exceptions, gateRuns, projectBySlug } from "../../mocks/core";
+import { decisions, milestones, projectHealth } from "../../mocks/portfolio";
 
 type Feature = { key: string; icon: IconName; title: string; body: string; points: string[]; visual: ReactNode };
 
 const features: Feature[] = [
+  {
+    key: "portfolio", icon: "grid", title: "ポートフォリオ", body: "全案件の健全性、計画と予測のずれ、予算と予測コスト、重大リスク、証跡の準備状況を一覧で比較できます。値には必ず出典と同期時刻を付け、古い情報は「古い情報」と表示します。",
+    points: ["案件ごとの健全性と計画差異", "予算・予測コスト・証跡の準備度", "出典（正本）と同期の鮮度", "根拠への掘り下げ"],
+    visual: (
+      <div className="card stack" style={{ ["--gap" as string]: "8px" }}>
+        {projectHealth.map((h) => (
+          <div key={h.slug} className="row between small" style={{ ["--gap" as string]: "8px" }}>
+            <span className="stack" style={{ ["--gap" as string]: "2px" }}><span className="strong truncate" style={{ maxWidth: 200 }}>{projectBySlug(h.slug).name}</span><SourceTag source={h.source} prefix="" compact /></span>
+            <span className="row" style={{ ["--gap" as string]: "6px" }}><PlanDates baseline={h.baseline_end} forecast={h.forecast_end} compact /><StatusBadge vocab={HEALTH[h.health]} size="sm" /></span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    key: "schedule", icon: "calendar", title: "計画とカレンダーの同期", body: "GitHub Projects、GitLab、Azure Boards、Jira の計画と、Google・Microsoft 365 の共有カレンダーを読み取り同期します。当初計画・承認済み改訂・予測・実績を分けて保存し、上書きで遅延の履歴を消しません。",
+    points: ["初回の全件取込みと差分同期", "当初・改訂・予測・実績の区別", "会議と判断期限の重ね合わせ", "個人の非公開予定は取り込まない", "読み取り専用（書き戻しはしない）"],
+    visual: (
+      <RoadmapTimeline
+        from="2026-11-01"
+        to="2027-03-31"
+        rows={milestones.filter((m) => m.project === "order-renewal" && !m.actual).map((m) => ({ id: m.id, label: m.title, baseline: { start: "2026-11-01", end: m.baseline }, current: { start: "2026-11-01", end: m.forecast ?? m.baseline, confidence: m.confidence, tone: m.forecast && m.forecast > m.baseline ? "warn" : "info" } }))}
+      />
+    ),
+  },
+  {
+    key: "decisions", icon: "inbox", title: "経営判断の記録", body: "投資、優先順位、要員・予算、リスク受容、リリース可否などの判断を、選択肢・根拠・条件・期限と一緒に記録し、判断後の実施状況まで追跡します。実務上の承認者が別の場合は、正しい承認者へ回付します。",
+    points: ["期限と影響額の順に並ぶ受信箱", "依頼者と判断者の分離", "条件付き承認と実施状況の追跡", "判断ログの検索と出力"],
+    visual: (
+      <div className="card stack" style={{ ["--gap" as string]: "10px" }}>
+        {decisions.slice(0, 3).map((d) => (
+          <div key={d.id} className="row between small" style={{ ["--gap" as string]: "8px" }}><span className="truncate" style={{ maxWidth: 300 }}>{d.title}</span><StatusBadge vocab={DECISION_STATUS[d.status]} size="sm" /></div>
+        ))}
+        <ResponsibilitySplit decide="経営層（投資・優先順位・リスク受容）" act="PM・現場（案の作成と実施）" />
+      </div>
+    ),
+  },
+  {
+    key: "investment", icon: "briefcase", title: "投資と配分", body: "案件受付で事業ケース（選択肢、費用、便益、リスク、KPI）を比べて開始・保留・却下を判断し、優先順位、役割別の要員と予算、ロードマップ、リリース後の便益まで追跡します。個人の稼働監視はしません。",
+    points: ["事業ケースと「実施しない」案の比較", "優先順位のシナリオ比較", "役割別・期間別の要員と予算", "確約・目標・予測を分けたロードマップ", "KPI の期待値と実績"],
+    visual: <div className="card stack" style={{ ["--gap" as string]: "8px" }}><span className="small strong">BC-0007 在庫予測機能の追加</span><span className="small muted">選択肢 3 件 · 推奨: 既製の予測エンジン · 審議日 12/15</span></div>,
+  },
+  {
+    key: "connect", icon: "plug", title: "連携・通知・オンコール", body: "GitHub、GitLab、AWS CodeCommit、Azure Repos と CI を接続し、プロバイダーごとの能力の違いを隠さず表示します。通知は Slack、Teams、Google Chat、Mattermost、Chatwork、Discord へ。オンコールは PagerDuty を正本にし、受領と解決を分けて記録します。",
+    points: ["Webhook の署名検証と重複排除", "同期の健全性と再認可", "通知のルール・配信ログ・再送", "当番の参照とエスカレーション"],
+    visual: <div className="card row" style={{ ["--gap" as string]: "10px", flexWrap: "wrap" }}>{(["github", "gitlab", "codecommit", "azureRepos", "slack", "teams", "pagerduty"] as const).map((p) => <ProviderBadge key={p} provider={p} />)}</div>,
+  },
   {
     key: "requirements", icon: "list", title: "要求管理と AI レビュー", body: "要求に一意の ID と受入基準を持たせ、状態と承認を一元管理します。AI は曖昧さ・矛盾・テスト可能性を指摘しますが、採用するかどうかは人が決めます。",
     points: ["REQ-ID・受入基準・状態の管理", "SOW の版から要求候補を抽出", "AI 所見は採用・却下（理由必須）で判断", "顧客の承認をポータルで受け付け"],
@@ -56,8 +104,8 @@ const features: Feature[] = [
     visual: <div className="card"><ShareLinkPanel initial="active" /></div>,
   },
   {
-    key: "portal", icon: "users", title: "顧客ポータル", body: "発注元の担当者は、要求の承認、変更の起票、リリースの受入をスマートフォンからでも行えます。",
-    points: ["承認待ちの一覧", "差分付きの承認画面", "受入チェックリスト"],
+    key: "portal", icon: "users", title: "顧客の承認と受入", body: "発注元の担当者は、アカウントを作らずに期限付きの承認リンクで要求・変更を承認し、リリースを受け入れられます。顧客ポータルも用意しています。スマートフォンにも対応します。",
+    points: ["メールの確認コードで本人確認", "差分付きの承認画面", "受入チェックリスト", "誰がいつ承認したかを証跡に記録"],
     visual: (
       <div className="card stack" style={{ ["--gap" as string]: "12px" }}>
         <div className="row between"><span className="strong">REQ-0012 発注金額の上限</span><StatusBadge vocab={ARTIFACT_STATUS.pending} size="sm" /></div>

@@ -1,23 +1,24 @@
-// 画面ID: A-09 AIとデータの設定（オンボーディング 6/7）
+// 画面ID: A-09 AIとデータの設定（オンボーディング 9/10）
 import { useState } from "react";
-import { paths } from "../../lib/paths";
 import { DATA_CLASS } from "../../lib/vocab";
 import type { DataClass } from "../../lib/vocab";
-import { Banner, DataClassBadge, Icon, OnboardingLayout, Select, Toggle } from "../../ui";
+import { Banner, DataClassBadge, Icon, Select, Toggle } from "../../ui";
+import { ExecOnboarding } from "./parts";
 
 const FEATURES = [
   { key: "req", label: "要求レビュー", desc: "要求の曖昧性、矛盾、テスト可能性を指摘する" },
   { key: "design", label: "設計レビュー", desc: "設計と要求の対応漏れや矛盾を指摘する" },
   { key: "sow", label: "SOW 抽出", desc: "SOW から要求候補、納入物、期限を抽出する" },
   { key: "link", label: "リンク候補", desc: "要求・設計・PR・テストの対応候補を提示する" },
+  { key: "summary", label: "経営向けの要約", desc: "計画差異やリスクを要約する（元データへのリンクと確信度を付ける）" },
 ];
 
 export function AiSettings() {
   const [enabled, setEnabled] = useState(true);
-  const [features, setFeatures] = useState<Record<string, boolean>>({ req: true, design: true, sow: true, link: true });
+  const [features, setFeatures] = useState<Record<string, boolean>>({ req: true, design: true, sow: true, link: true, summary: true });
   const [cls, setCls] = useState<DataClass>("internal");
   return (
-    <OnboardingLayout step={5} title="AIとデータの設定" description="AI は下書きと指摘だけを行い、ゲートの判定や承認には使いません。送るデータの範囲をここで決めます。" back={paths.onboardingMembers()} next={paths.onboardingDone()}>
+    <ExecOnboarding step={8} title="AIとデータの設定" description="AI は要約・下書き・指摘だけを行い、ゲートの判定、承認、経営判断には使いません。送るデータの範囲をここで決めます。">
       <div className="card tight stack" style={{ ["--gap" as string]: "6px", background: "var(--bg-subtle)" }}>
         {[
           "AI に送ったデータを学習に使わない契約の提供先だけを使います",
@@ -57,6 +58,6 @@ export function AiSettings() {
           </table>
         </div>
       </div>
-    </OnboardingLayout>
+    </ExecOnboarding>
   );
 }

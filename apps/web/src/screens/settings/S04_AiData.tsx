@@ -1,10 +1,10 @@
 // 画面ID: S-04 AIとデータ分類
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
-import { ORG } from "../../lib/paths";
+import { ORG, paths } from "../../lib/paths";
 import { DATA_CLASS } from "../../lib/vocab";
 import type { DataClass } from "../../lib/vocab";
-import { aiAgents, aiFeatures, aiForbidden, aiSendLog, aiToolAllowlist, projectDataClass } from "../../mocks/settings";
+import { aiAgents, aiFeatures, aiForbidden, aiSendLog, aiSubprocessors, aiToolAllowlist, projectDataClass } from "../../mocks/settings";
 import { ActorLabel, Banner, Button, DataClassBadge, DataTable, ErrorState, Section, Select, SettingsLayout, Skeleton, Tag, Timestamp, Toggle, useToast } from "../../ui";
 
 const classOptions = (Object.keys(DATA_CLASS) as DataClass[]).map((k) => ({ value: k, label: DATA_CLASS[k].label }));
@@ -18,6 +18,8 @@ export function S04AiData({ org = ORG }: { org?: string }) {
   const [dirty, setDirty] = useState(false);
   const [urlFetch, setUrlFetch] = useState(false);
   const [escalateTo, setEscalateTo] = useState("pm");
+  const [lowConf, setLowConf] = useState("0.6");
+  const [lowMode, setLowMode] = useState("label");
   const touch = () => setDirty(true);
 
   return (
@@ -128,6 +130,33 @@ export function S04AiData({ org = ORG }: { org?: string }) {
                         </select>
                       </td>
                       <td>{p.inherited ? <Tag>組織の既定</Tag> : <Tag tone="primary">上書き</Tag>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+
+          <Section title="信頼度の低い所見の表示" sub="AI の所見には確信度を付けて表示します。低い所見をどう見せるかを決めます" actions={<Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.aiEval(org)}>AIの評価を見る</Button>}>
+            <div className="grid cols-2">
+              <Select label="低信頼とみなす確信度" value={lowConf} onChange={(v) => { setLowConf(v); touch(); }} options={[{ value: "0.5", label: "50% 未満" }, { value: "0.6", label: "60% 未満（推奨）" }, { value: "0.7", label: "70% 未満" }]} />
+              <Select label="低信頼の所見" value={lowMode} onChange={(v) => { setLowMode(v); touch(); }} options={[{ value: "label", label: "「低信頼」と表示して一覧に残す" }, { value: "collapse", label: "折りたたんで表示する" }]} help="低信頼の所見も消さずに記録します" />
+            </div>
+            <p className="tiny muted" style={{ marginTop: 8 }}>モデルが対象外の入力や、無効なモデルが選ばれた場合は「AI を利用できません」と表示し、人の承認とゲートはそのまま続けます。</p>
+          </Section>
+
+          <Section title="AI の提供先とリージョン" sub="契約・設定・実行ログが一致していることを確認できます。提供先の変更は事前に通知します" flush>
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead><tr><th>提供先（再委託先）</th><th>処理リージョン</th><th>用途</th><th>保持</th><th>学習利用</th></tr></thead>
+                <tbody>
+                  {aiSubprocessors.map((x) => (
+                    <tr key={x.name}>
+                      <td className="small strong">{x.name}</td>
+                      <td className="small">{x.region}</td>
+                      <td className="small">{x.purpose}</td>
+                      <td className="small">{x.retention}</td>
+                      <td><Tag tone="pass" square icon="check">{x.training}</Tag></td>
                     </tr>
                   ))}
                 </tbody>

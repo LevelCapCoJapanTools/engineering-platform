@@ -1,211 +1,195 @@
 // 画面ID: J-03 プロジェクト計画
-import { useEffect, useState } from "react";
+// 計画は課題・計画管理と文書リポジトリが正本。ここでは同期した計画、当初ベースラインと改訂履歴、顧客との合意を確認する。
+// 編集は正本で行い、本サービスでは計画を上書きしない。
+import { useState } from "react";
 import {
-  AIDraftBanner,
-  ApprovalPanel,
   Banner,
   Button,
   ChecklistPanel,
-  ConfirmDialog,
   DetailLayout,
+  ErrorState,
+  ExternalActor,
   Icon,
   KeyValueList,
-  MarkdownEditor,
   MarkdownViewer,
   MetaSection,
-  MoreMenu,
   PageHeader,
   ProjectLayout,
+  Section,
+  Skeleton,
   StatusBadge,
+  Tabs,
   Tag,
-  Timeline,
-  UserChip,
-  membersWithRole,
-  useToast,
+  Timestamp,
   cx,
 } from "../../ui";
-import { useScreenState } from "../../lib/router";
+import { Link, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
-import { APPROVAL_STATUS, ARTIFACT_STATUS } from "../../lib/vocab";
-import type { Approver } from "../../lib/types";
-import { requirements, userById } from "../../mocks/core";
-import { planApprovers, planSections } from "../../mocks/planning";
-import { orgOf, projectOf } from "./shared";
+import { ARTIFACT_STATUS } from "../../lib/vocab";
+import { formatDate, daysBetween } from "../../lib/format";
+import { customerAgreements, DOC_SOURCE, PLAN_SOURCE, planRevisions, planSections } from "../../mocks/planning";
+import type { PlanRevision } from "../../mocks/planning";
+import { DecisionLink, SourceBar, orgOf, projectOf } from "./shared";
 
-const AI_DRAFTS: Record<string, string> = {
-  versioning: "- main ブランチは保護し、PR とゲート A〜D の通過を必須とする\n- リリースは `vX.Y.Z` のタグを付け、タグは変更不可とする\n- 設計書・要求は docs/ 配下で版管理する",
-  agreements: "- 要求の承認は顧客ポータルで行う\n- 変更要求は影響分析のうえ PM と顧客が承認する\n- 受入は各リリースの納入後10営業日以内に行う",
+export const J03_STATES = ["既定（改訂案あり）", "改訂案なし", "必須項目の不足", "読み込み中", "取得失敗"];
+
+const KIND_LABEL: Record<PlanRevision["kind"], { label: string; tone: "info" | "pass" | "warn" }> = {
+  baseline: { label: "当初ベースライン", tone: "info" },
+  revision: { label: "承認済み改訂", tone: "pass" },
+  pending: { label: "改訂案（未承認）", tone: "warn" },
 };
-
-export const J03_STATES = ["承認待ち", "下書き", "承認済み", "承認後の変更中", "顧客として表示", "AI下書きを挿入済み"];
 
 export function J03Plan({ params }: { params: Record<string, string> }) {
   const state = useScreenState();
   const org = orgOf(params);
   const pr = projectOf(params);
-  const toast = useToast();
-  const [editing, setEditing] = useState(false);
-  const [bodies, setBodies] = useState<Record<string, string>>(() => Object.fromEntries(planSections.map((s) => [s.key, s.body])));
-  const [aiDrafted, setAiDrafted] = useState<string[]>([]);
-  const [confirmEdit, setConfirmEdit] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [leave, setLeave] = useState(false);
-
-  useEffect(() => {
-    if (state === "AI下書きを挿入済み") {
-      setEditing(true);
-      setBodies((b) => ({ ...b, ...AI_DRAFTS }));
-      setAiDrafted(Object.keys(AI_DRAFTS));
-    } else {
-      setEditing(state === "下書き" || state === "承認後の変更中");
-      setAiDrafted([]);
-      setBodies(Object.fromEntries(planSections.map((s) => [s.key, s.body])));
-    }
-  }, [state]);
-
-  const status =
-    state === "下書き" ? ARTIFACT_STATUS.draft : state === "承認済み" ? ARTIFACT_STATUS.approved : state === "承認後の変更中" ? ARTIFACT_STATUS.changing : ARTIFACT_STATUS.pending;
-  const approvers: Approver[] =
-    state === "承認済み"
-      ? planApprovers.map((a) => ({ ...a, status: "approved", decided_at: a.decided_at ?? "2026-11-20T15:00:00+09:00" }))
-      : state === "下書き" || state === "承認後の変更中"
-        ? planApprovers.map((a) => ({ role: a.role, user_id: a.user_id, status: "draft" }))
-        : planApprovers;
-  const missing = planSections.filter((s) => s.required && !bodies[s.key]?.trim());
-  const checklist = planSections.map((s) => ({
+  const [tab, setTab] = useState("plan");
+  const revisions = state === "改訂案なし" ? planRevisions.filter((r) => r.kind !== "pending") : planRevisions;
+  const pending = revisions.find((r) => r.kind === "pending");
+  const current = revisions.find((r) => r.kind !== "pending")!;
+  const baseline = revisions.find((r) => r.kind === "baseline")!;
+  const sections = state === "必須項目の不足" ? planSections : planSections.map((s) => (s.key === "versioning" ? { ...s, body: "- main は保護し、PR とゲート A〜D の通過を必須とする\n- リリースは `vX.Y.Z` のタグを付け、変更しない", missing: undefined } : s));
+  const missing = sections.filter((s) => s.required && !s.body.trim());
+  const checklist = sections.map((s) => ({
     id: s.key,
     title: s.title,
-    state: (bodies[s.key]?.trim() ? "ok" : s.required ? "ng" : "pending") as "ok" | "ng" | "pending",
-    detail: bodies[s.key]?.trim() ? (aiDrafted.includes(s.key) ? "AIの下書きを含む（未確認）" : "記入済み") : s.required ? "必須項目が未記入" : "任意項目",
+    state: (s.body.trim() ? "ok" : s.required ? "ng" : "pending") as "ok" | "ng" | "pending",
+    detail: s.body.trim() ? "記入済み（正本）" : s.required ? "必須項目が未記入" : "任意項目",
     actor: "ci" as const,
   }));
-
-  const startEdit = () => (status === ARTIFACT_STATUS.approved ? setConfirmEdit(true) : setEditing(true));
-  const draftAll = () => {
-    setBodies((b) => ({ ...b, ...Object.fromEntries(Object.entries(AI_DRAFTS).filter(([k]) => !b[k]?.trim())) }));
-    setAiDrafted(Object.keys(AI_DRAFTS));
-    setEditing(true);
-    setDirty(true);
-    toast({ kind: "info", message: "未記入のセクションにAIの下書きを挿入しました。確認して編集してください" });
-  };
 
   return (
     <ProjectLayout org={org} project={pr} active="plan" trail={[{ label: "プロジェクト計画" }]}>
       <PageHeader
         title="プロジェクト計画"
-        id="PLAN-v3"
-        status={status}
-        description="SOW v3 を作業範囲とする計画です。顧客の承認で確定します。"
-        actions={
-          editing ? (
-            <>
-              <Button icon="sparkles" onClick={draftAll}>AIで下書き</Button>
-              <Button variant="ghost" onClick={() => (dirty ? setLeave(true) : setEditing(false))}>編集をやめる</Button>
-              <Button variant="primary" icon="check" onClick={() => { setEditing(false); setDirty(false); setAiDrafted([]); toast({ kind: "success", message: "計画を保存しました" }); }}>保存</Button>
-            </>
-          ) : (
-            <>
-              <Button icon="edit" onClick={startEdit} disabled={state === "顧客として表示"} disabledReason="顧客は計画を編集できません">編集</Button>
-              <Button variant="primary" icon="mail" disabled={missing.length > 0 || status !== ARTIFACT_STATUS.draft} disabledReason={missing.length > 0 ? `必須項目が ${missing.length} 件未記入です` : "すでに承認を依頼しています"} onClick={() => toast({ kind: "success", message: "顧客に承認を依頼しました" })}>承認を依頼</Button>
-              <MoreMenu items={[{ label: "PDF で出力", icon: "download" }, { label: "版の履歴", icon: "history" }]} />
-            </>
-          )
-        }
+        id={current.id}
+        status={ARTIFACT_STATUS.approved}
+        description="正本（課題・計画管理と文書リポジトリ）から同期した計画です。当初ベースラインと承認済みの改訂を別々に残します。"
+        actions={<Button icon="calendar" to={paths.schedule(org, pr)}>スケジュール</Button>}
       />
-      {status === ARTIFACT_STATUS.changing ? (
-        <Banner tone="warn" title="承認済みの計画を変更しています">保存すると状態が「変更中」になり、顧客の再承認が必要です。</Banner>
-      ) : null}
-      {missing.length ? (
-        <Banner tone="warn" title={`必須項目が ${missing.length} 件未記入です`}>{missing.map((m) => m.title).join("、")} を記入すると承認を依頼できます。</Banner>
-      ) : null}
-      <DetailLayout
-        main={
-          <>
-            <nav className="pl-plan-toc" aria-label="計画のセクション">
-              {planSections.map((s) => (
-                <a key={s.key} href={`#plan-${s.key}`} onClick={(e) => { e.preventDefault(); document.getElementById(`plan-${s.key}`)?.scrollIntoView({ behavior: "smooth" }); }} className={cx(s.required && !bodies[s.key]?.trim() && "ng")}>
-                  {s.required && !bodies[s.key]?.trim() ? <Icon name="alert" size={11} /> : null}
-                  {s.title}
-                </a>
-              ))}
-            </nav>
-            {aiDrafted.length && editing ? <AIDraftBanner /> : null}
-            {planSections.map((s) => {
-              const empty = !bodies[s.key]?.trim();
-              return (
-                <section key={s.key} id={`plan-${s.key}`} className="card pl-plan-section stack" style={{ ["--gap" as string]: "12px" }}>
-                  <div className="row between">
-                    <h2 className="section-title">{s.title}</h2>
-                    <span className="row" style={{ ["--gap" as string]: "6px" }}>
-                      {aiDrafted.includes(s.key) ? <Tag tone="special" dashed icon="sparkles">AI下書き</Tag> : null}
-                      {s.required ? <Tag square>必須</Tag> : <Tag square>任意</Tag>}
-                      {empty && s.required ? <Tag tone="warn" icon="alert">未記入</Tag> : null}
-                    </span>
+      {state === "読み込み中" ? (
+        <Skeleton variant="detail" />
+      ) : state === "取得失敗" ? (
+        <ErrorState />
+      ) : (
+        <>
+          <SourceBar source={PLAN_SOURCE} note="マイルストーン・作業分解・担当" />
+          {pending ? (
+            <Banner tone="warn" title={`${pending.label} が承認待ちです`} action={<Button size="sm" variant="primary" to={paths.decision(org, "DEC-0033")}>経営判断を開く</Button>}>
+              {pending.reason}。計画の改訂は PM が作成し、顧客の合意で確定します。経営層は顧客への説明の要否を判断します。
+            </Banner>
+          ) : null}
+          {missing.length ? (
+            <Banner tone="warn" title={`必須項目が ${missing.length} 件未記入です`}>{missing.map((m) => m.title).join("、")}。正本の計画書で記入されると自動で反映されます。</Banner>
+          ) : null}
+          <DetailLayout
+            main={
+              <>
+                <Tabs value={tab} onChange={setTab} tabs={[{ value: "plan", label: "計画の内容" }, { value: "revisions", label: "ベースラインと改訂", count: revisions.length }, { value: "agreements", label: "顧客との合意", count: customerAgreements.length }]} />
+                {tab === "plan" ? (
+                  <>
+                    <nav className="pl-plan-toc" aria-label="計画のセクション">
+                      {sections.map((s) => (
+                        <a key={s.key} href={`#plan-${s.key}`} onClick={(e) => { e.preventDefault(); document.getElementById(`plan-${s.key}`)?.scrollIntoView({ behavior: "smooth" }); }} className={cx(s.required && !s.body.trim() && "ng")}>
+                          {s.required && !s.body.trim() ? <Icon name="alert" size={11} /> : null}
+                          {s.title}
+                        </a>
+                      ))}
+                    </nav>
+                    {sections.map((s) => (
+                      <section key={s.key} id={`plan-${s.key}`} className="card pl-plan-section stack" style={{ ["--gap" as string]: "12px" }}>
+                        <div className="row between">
+                          <h2 className="section-title">{s.title}</h2>
+                          <span className="row" style={{ ["--gap" as string]: "6px" }}>
+                            {s.required ? <Tag square>必須</Tag> : <Tag square>任意</Tag>}
+                            {!s.body.trim() && s.required ? <Tag tone="warn" icon="alert">未記入</Tag> : null}
+                          </span>
+                        </div>
+                        {s.body.trim() ? <MarkdownViewer source={s.body} /> : <p className="small muted">{s.missing ?? "未記入です"}</p>}
+                      </section>
+                    ))}
+                  </>
+                ) : tab === "revisions" ? (
+                  <Section title="ベースラインと改訂の履歴" sub="上書きせず版として保存します。当初の期限と遅延の履歴は消えません" flush>
+                    <div className="table-wrap">
+                      <table className="table">
+                        <thead><tr><th>版</th><th>区分</th><th>最終受入</th><th>理由</th><th>作成</th><th>承認</th></tr></thead>
+                        <tbody>
+                          {revisions.map((r) => (
+                            <tr key={r.id}>
+                              <td><span className="strong">{r.label}</span><div className="tiny muted mono">{r.id}</div></td>
+                              <td><Tag square tone={KIND_LABEL[r.kind].tone}>{KIND_LABEL[r.kind].label}</Tag></td>
+                              <td className="nowrap">
+                                {formatDate(r.end_date)}
+                                {r.id !== baseline.id ? <div className="tiny muted">当初比 {daysBetween(baseline.end_date, r.end_date) > 0 ? "+" : ""}{daysBetween(baseline.end_date, r.end_date)}日</div> : null}
+                              </td>
+                              <td className="small">
+                                {r.reason}
+                                <ul className="tiny muted" style={{ margin: "4px 0 0", paddingLeft: 16 }}>{r.changes.map((c) => <li key={c}>{c}</li>)}</ul>
+                              </td>
+                              <td><ExternalActor userId={r.requested_by} /><div className="tiny muted"><Timestamp at={r.at} mode="absolute" /></div></td>
+                              <td>{r.approved_by ? <><ExternalActor userId={r.approved_by} role="顧客" /><div className="tiny muted">{r.approved_at ? <Timestamp at={r.approved_at} mode="absolute" /> : null}</div></> : <StatusBadge vocab={ARTIFACT_STATUS.pending} size="sm" />}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Section>
+                ) : (
+                  <Section title="顧客との合意" sub="決定者・日時・内容を記録し、計画の版や変更要求に結び付けます" flush>
+                    <div className="table-wrap">
+                      <table className="table">
+                        <thead><tr><th>日時</th><th>決定者</th><th>内容</th><th>対象</th><th>記録元</th></tr></thead>
+                        <tbody>
+                          {customerAgreements.map((a) => (
+                            <tr key={a.id}>
+                              <td className="nowrap small"><Timestamp at={a.at} mode="absolute" /></td>
+                              <td><ExternalActor userId={a.decider} role="顧客" /></td>
+                              <td>{a.content}</td>
+                              <td className="mono small">{a.link.startsWith("CR") ? <Link to={paths.change(org, pr, a.link)}>{a.link}</Link> : a.link}</td>
+                              <td className="small">{a.source.startsWith("MTG") ? <Link to={paths.meeting(org, pr, a.source)}>{a.source}</Link> : a.source}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Section>
+                )}
+              </>
+            }
+            side={
+              <>
+                <MetaSection title="現在の計画">
+                  <KeyValueList
+                    stacked
+                    items={[
+                      { label: "有効な版", value: `${current.label}（${current.id}）` },
+                      { label: "当初の最終受入", value: formatDate(baseline.end_date) },
+                      { label: "現在の最終受入", value: formatDate(current.end_date) },
+                      { label: "作成者（PM）", value: <ExternalActor userId={current.requested_by} /> },
+                      { label: "出典", value: "SOW v3（SOW-3）" },
+                    ]}
+                  />
+                </MetaSection>
+                {pending ? (
+                  <MetaSection title="関連する経営判断">
+                    <DecisionLink org={org} id="DEC-0033" />
+                  </MetaSection>
+                ) : null}
+                <MetaSection title="必須項目の充足">
+                  <ChecklistPanel items={checklist} />
+                </MetaSection>
+                <MetaSection title="正本" defaultOpen={false}>
+                  <div className="stack" style={{ ["--gap" as string]: "8px" }}>
+                    <SourceBar source={PLAN_SOURCE} openLabel="計画管理で開く" />
+                    <SourceBar source={DOC_SOURCE} openLabel="計画書を開く" />
                   </div>
-                  {editing ? (
-                    <MarkdownEditor
-                      value={bodies[s.key]}
-                      onChange={(v) => { setBodies((b) => ({ ...b, [s.key]: v })); setDirty(true); }}
-                      suggestions={requirements.map((r) => ({ id: r.id, title: r.title }))}
-                      aiDraft={aiDrafted.includes(s.key)}
-                      onAiDraft={AI_DRAFTS[s.key] ? () => { setBodies((b) => ({ ...b, [s.key]: AI_DRAFTS[s.key] })); setAiDrafted((x) => [...x, s.key]); setDirty(true); } : undefined}
-                      minHeight={120}
-                    />
-                  ) : empty ? (
-                    <p className="small muted">{s.missing ?? "未記入です"}</p>
-                  ) : (
-                    <MarkdownViewer source={bodies[s.key]} />
-                  )}
-                </section>
-              );
-            })}
-          </>
-        }
-        side={
-          <>
-            <MetaSection title="状態">
-              <KeyValueList
-                stacked
-                items={[
-                  { label: "状態", value: <StatusBadge vocab={status} size="sm" /> },
-                  { label: "作成者", value: <UserChip user={userById("u-sato")} /> },
-                  { label: "最終更新", value: "2026-11-13 10:00 JST" },
-                  { label: "出典", value: "SOW v3（SOW-3）" },
-                ]}
-              />
-            </MetaSection>
-            <MetaSection title="必須項目の充足">
-              <ChecklistPanel items={checklist} />
-            </MetaSection>
-            <MetaSection title="承認">
-              <ApprovalPanel
-                approvers={approvers}
-                canDecide={state === "顧客として表示"}
-                blockedReason={state === "承認待ち" ? "顧客の承認待ちです。あなた（PM）はすでに承認しています" : undefined}
-                eligible={state === "承認待ち" ? membersWithRole("顧客") : undefined}
-                onDecide={(d) => toast({ kind: d === "approved" ? "success" : "info", message: d === "approved" ? "計画を承認しました" : "計画を差し戻しました" })}
-              />
-              {status === ARTIFACT_STATUS.approved ? <span className="tiny muted">全員の承認で {APPROVAL_STATUS.approved.label} になりました</span> : null}
-            </MetaSection>
-            <MetaSection title="履歴" defaultOpen={false}>
-              <Timeline
-                compact
-                items={[
-                  { id: "h1", actor: { kind: "human", name: "佐藤 美咲" }, action: "計画を承認", at: "2026-11-13T10:00:00+09:00" },
-                  { id: "h2", actor: { kind: "ai", name: "計画下書き" }, action: "2セクションの下書きを作成", at: "2026-11-12T11:00:00+09:00" },
-                  { id: "h3", actor: { kind: "human", name: "佐藤 美咲" }, action: "SOW v3 を反映して更新", at: "2026-11-12T10:30:00+09:00" },
-                ]}
-              />
-            </MetaSection>
-            <MetaSection title="関連" defaultOpen={false}>
-              <a href={`#${paths.sow(org, pr)}`} className="small">SOW の版一覧</a>
-              <a href={`#${paths.risks(org, pr)}`} className="small">リスク台帳</a>
-            </MetaSection>
-          </>
-        }
-      />
-      <ConfirmDialog open={confirmEdit} onClose={() => setConfirmEdit(false)} onConfirm={() => setEditing(true)} title="承認済みの計画を編集しますか？" message="編集を保存すると状態が「変更中」に戻り、顧客の再承認が必要になります。" confirmLabel="編集を始める" />
-      <ConfirmDialog open={leave} onClose={() => setLeave(false)} onConfirm={() => { setEditing(false); setDirty(false); setBodies(Object.fromEntries(planSections.map((s) => [s.key, s.body]))); }} title="保存していない変更があります" message="編集をやめると、保存していない変更は失われます。" confirmLabel="変更を破棄" danger />
+                </MetaSection>
+              </>
+            }
+          />
+        </>
+      )}
     </ProjectLayout>
   );
 }

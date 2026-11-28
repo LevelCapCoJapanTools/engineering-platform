@@ -42,6 +42,20 @@ export function X04AssessorView({ token }: { token: string }) {
     );
   }
 
+  if (state === "本人確認前") {
+    return (
+      <PortalLayout external="assessor" wide>
+        <div className="card stack" style={{ ["--gap" as string]: "12px", maxWidth: 520, margin: "0 auto" }}>
+          <h1 style={{ fontSize: "var(--text-lg)", color: "var(--text-strong)" }}>共有された監査パックを開く</h1>
+          <p className="small muted">このリンクは assessor@review-office.example 宛てです。本人確認のため、メールに送った 6 桁のコードを入力してください。</p>
+          <label className="field"><span className="field-label">確認コード</span><input className="input" inputMode="numeric" placeholder="123456" aria-label="確認コード" /></label>
+          <div className="row"><Button variant="primary">確認して開く</Button><Button variant="ghost">コードを再送</Button></div>
+          <p className="tiny muted">コードの有効期限は 10 分です。5 回続けて間違えるとリンクを一時停止し、共有元に通知します。</p>
+        </div>
+      </PortalLayout>
+    );
+  }
+
   return (
     <PortalLayout external="assessor" wide>
       <div className="row between">
@@ -52,8 +66,10 @@ export function X04AssessorView({ token }: { token: string }) {
         <Button variant="primary" icon="download">監査パックをダウンロード（ZIP）</Button>
       </div>
       <Banner tone="info" title="閲覧専用の共有リンクです（有効期限: 2026-12-11、あと14日）">
-        この画面では閲覧のみ行えます。閲覧の記録は共有元の監査ログに残ります。本パックは ISO/IEC 29110 の適合準備のための証跡であり、認証の判断は評価者が行います。
+        この画面では閲覧のみ行えます。閲覧とダウンロードの記録は共有元の監査ログに残ります。本パックは ISO/IEC 29110 の適合準備のための証跡であり、認証の判断は評価者が行います。
+        <div className="tiny" style={{ marginTop: 6 }}>共有範囲: 統制項目 8 件・リリース 2 件（v1.2.0〜v1.3.0）のみ。共有元の他の案件や顧客の情報は含まれません。ダウンロードしたファイルには閲覧者のメールアドレスが記録されます。</div>
       </Banner>
+      <div className="row end"><Button size="sm" variant="ghost" icon="message">出力形式についてのフィードバックを送る</Button></div>
 
       <section className="card row between" style={{ flexWrap: "wrap" }}>
         <div className="row" style={{ ["--gap" as string]: "12px" }}>

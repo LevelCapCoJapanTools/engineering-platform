@@ -2,7 +2,7 @@
 import { useScreenState, Link } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import { Button, CenterLayout, EmptyState, ErrorState, Icon, RoleBadge } from "../../ui";
-import { orgs } from "../../mocks/core";
+import { currentUser, orgs } from "../../mocks/core";
 
 export function Orgs() {
   const state = useScreenState();
@@ -49,7 +49,7 @@ export function Orgs() {
                   <span>プロジェクト {o.project_count}件</span>
                 </span>
                 <span className="row" style={{ ["--gap" as string]: "4px" }}>
-                  {o.my_roles.map((r) => <RoleBadge key={r} role={r} />)}
+                  {(o.slug === "sample-soft" ? currentUser.roles : o.my_roles).map((r) => <RoleBadge key={r} role={r} />)}
                 </span>
               </span>
               {o.pending_approvals ? (

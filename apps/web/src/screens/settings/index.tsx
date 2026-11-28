@@ -11,6 +11,10 @@ import { S05EvidenceStorage } from "./S05_EvidenceStorage";
 import { S06Security } from "./S06_Security";
 import { S07Billing } from "./S07_Billing";
 import { S08Profile } from "./S08_Profile";
+import { S09Actors } from "./S09_Actors";
+import { S10Scopes } from "./S10_Scopes";
+import { S11AiEval } from "./S11_AiEval";
+import { S12Usage } from "./S12_Usage";
 
 const group = "6.10 設定";
 
@@ -22,11 +26,15 @@ function Keyed({ children }: { children: () => ReactNode }) {
 
 export const settingsScreens: ScreenDef[] = [
   { id: "S-01", title: "組織の設定", path: paths.settings(":org"), group, priority: "Must", states: ["通常", "入力エラー", "閲覧のみ", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S01OrgSettings org={p.org} />}</Keyed> },
-  { id: "S-02", title: "メンバーとロール", path: paths.members(":org"), group, priority: "Must", states: ["通常", "違反なし", "空", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S02Members org={p.org} />}</Keyed> },
+  { id: "S-02", title: "利用者とロール", path: paths.members(":org"), group, priority: "Must", states: ["通常", "違反なし", "MFA未設定あり", "空", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S02Members org={p.org} />}</Keyed> },
   { id: "S-03", title: "連携", path: paths.integrations(":org"), group, priority: "Must", states: ["接続済み", "権限不足", "切断", "Webhookエラー", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S03Integrations org={p.org} />}</Keyed> },
   { id: "S-04", title: "AIとデータ分類", path: paths.aiSettings(":org"), group, priority: "Must", states: ["通常", "AI無効", "送信ログなし", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S04AiData org={p.org} />}</Keyed> },
   { id: "S-05", title: "証跡の保管", path: paths.evidenceSettings(":org"), group, priority: "Must", states: ["正常", "保管失敗", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S05EvidenceStorage org={p.org} />}</Keyed> },
-  { id: "S-06", title: "セキュリティ", path: paths.security_(":org"), group, priority: "Should", states: ["通常", "SSO未設定", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S06Security org={p.org} />}</Keyed> },
+  { id: "S-06", title: "セキュリティ", path: paths.security_(":org"), group, priority: "Should", states: ["通常", "SSO未設定", "MFA任意", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S06Security org={p.org} />}</Keyed> },
   { id: "S-07", title: "プランと請求", path: paths.billing(":org"), group, priority: "Must", states: ["通常", "上限到達", "支払い失敗", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S07Billing org={p.org} />}</Keyed> },
-  { id: "S-08", title: "個人設定", path: paths.me(), group, priority: "Must", states: ["通常", "GitHub未連携", "読み込み中", "エラー"], render: () => <Keyed>{() => <S08Profile />}</Keyed> },
+  { id: "S-08", title: "個人設定", path: paths.me(), group, priority: "Must", states: ["通常", "チャット未連携", "読み込み中", "エラー"], render: () => <Keyed>{() => <S08Profile />}</Keyed> },
+  { id: "S-09", title: "外部アクターの対応付け", path: paths.actors(":org"), group, priority: "Must", states: ["通常", "反映失敗", "空", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S09Actors org={p.org} />}</Keyed> },
+  { id: "S-10", title: "閲覧範囲と判断権限", path: paths.scopes(":org"), group, priority: "Must", states: ["通常", "未設定あり", "閲覧のみ", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S10Scopes org={p.org} />}</Keyed> },
+  { id: "S-11", title: "AIの評価", path: paths.aiEval(":org"), group, priority: "Should", states: ["通常", "劣化あり", "空", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S11AiEval org={p.org} />}</Keyed> },
+  { id: "S-12", title: "利用量", path: paths.usage(":org"), group, priority: "Should", states: ["通常", "上限間近", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S12Usage org={p.org} />}</Keyed> },
 ];

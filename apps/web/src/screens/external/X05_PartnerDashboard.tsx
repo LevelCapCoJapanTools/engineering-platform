@@ -9,7 +9,7 @@ import "./external.css";
 export function X05PartnerDashboard() {
   const state = useScreenState();
   const [view, setView] = useState("cards");
-  const orgs = state === "空" ? [] : partnerOrgs;
+  const orgs = state === "空" ? [] : state === "委任切れあり" ? partnerOrgs.filter((o) => o.slug !== "kakuu-dev") : partnerOrgs;
   const total = (k: "projects" | "blocked" | "missing_evidence") => orgs.reduce((n, o) => n + o[k], 0);
 
   return (
@@ -19,6 +19,16 @@ export function X05PartnerDashboard() {
         description="パートナーとして支援している顧客組織の状況を横断して確認します。各組織のデータは、その組織が許可した範囲だけ表示されます。"
         actions={<Button variant="primary" icon="plus">組織を招待</Button>}
       />
+      <div className="banner tone-info" role="status">
+        <Icon name="lock" />
+        <div className="banner-body">
+          <div className="banner-title">委任された範囲だけを表示しています</div>
+          <div>各組織の管理者が委任した組織・項目（件数と状態の集計、テンプレートの配布）だけを表示します。要求の本文、顧客名、コード、証跡の中身など、組織をまたいで機密を表示することはありません。委任の期限と範囲は各組織の設定で変更・取消できます。</div>
+        </div>
+      </div>
+      {state === "委任切れあり" ? (
+        <div className="banner tone-warn" role="status"><Icon name="clock" /><div className="banner-body"><div className="banner-title">架空開発合同会社の委任が 2026-11-25 で切れました</div><div>この組織の情報は表示されません。継続するには、組織の管理者に委任の更新を依頼してください。</div></div></div>
+      ) : null}
       {state === "読み込み中" ? (
         <Skeleton variant="card" />
       ) : state === "エラー" ? (

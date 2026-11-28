@@ -1,44 +1,41 @@
 // 画面ID: D-02 設計・ADR の詳細
+// 正本は Git リポジトリ（docs/design）と設計 PR のレビュー。ここでは代替案・判断理由・結果・改訂・レビュー・承認を閲覧する。
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import type { AiFinding, Approver, Design } from "../../lib/types";
 import { ARTIFACT_STATUS } from "../../lib/vocab";
 import { designById, designs, requirements, userById } from "../../mocks/core";
-import { designBodies, designComments } from "../../mocks/requirements";
+import { designBodies, designComments, designMeta, reqSource } from "../../mocks/requirements";
+import type { DesignAlternative, DesignReview } from "../../mocks/requirements";
 import {
   AIFindingCard,
   AISectionHead,
   ApprovalPanel,
-  Button,
+  Banner,
   CommentThread,
   DetailLayout,
   ErrorState,
+  ExternalActor,
+  Icon,
+  IdLink,
   KeyValueList,
-  MarkdownEditor,
   MarkdownViewer,
-  membersWithRole,
   MetaSection,
   PageHeader,
   ProjectLayout,
   Skeleton,
+  SoDNotice,
+  SourceTag,
   StateFlow,
   StatusBadge,
   Tabs,
   Tag,
-  TextField,
   Timeline,
   Timestamp,
-  TraceLinkEditor,
-  useToast,
-  UserChip,
 } from "../../ui";
-import type { TraceLink } from "../../ui";
-import { ARTIFACT_FLOW_LABEL, DESIGN_KIND, designPath, org, project, requirementCandidates } from "./common";
-
-const NEW_DESIGN: Design = { id: "ADR-0005", title: "", kind: "adr", status: "draft", requirement_ids: [], author_id: "u-sato", reviewer_ids: [], updated_at: "2026-11-27T10:30:00+09:00" };
-
-const ADR_TEMPLATE = "## 背景\n\n## 決定\n\n## 選択肢\n\n## 結果\n";
+import { ARTIFACT_FLOW_LABEL, ChainTable, DESIGN_KIND, designFile, designPath, OpenInSource, org, project, reqPath, ViewOnlyNote } from "./common";
+import type { ChainLink } from "./common";
 
 function bodyOf(d: Design) {
   return designBodies[d.id] ?? `## 背景\n${d.title}に関する検討。対象の要求: ${d.requirement_ids.join("、")}。\n\n## 決定\n本書のとおり設計する。\n\n## 結果\n- 関連する要求の受入基準を満たす\n- 詳細は各モジュールの設計を参照`;
@@ -51,18 +48,21 @@ function designFindings(d: Design): AiFinding[] {
   ];
 }
 
+const REVIEW_RESULT: Record<DesignReview["result"], { label: string; tone: "pass" | "fail" | "neutral" }> = {
+  approved: { label: "承認", tone: "pass" },
+  changesRequested: { label: "変更を要求", tone: "fail" },
+  commented: { label: "コメント", tone: "neutral" },
+};
+
+function defaultAlternatives(): DesignAlternative[] {
+  return [{ name: "本書の方式", pros: "要求の受入基準を満たす", cons: "—", chosen: true }];
+}
+
 export function DesignDetail({ id }: { id: string }) {
   const state = useScreenState();
-  const toast = useToast();
-  const isNew = id === "new";
-  const base = isNew ? NEW_DESIGN : state === "approved" ? designById("ADR-0004") : designs.find((d) => d.id === id) ?? designById("ADR-0003");
-  const [design, setDesign] = useState(base);
-  const [editing, setEditing] = useState(isNew || state === "editing");
-  const [title, setTitle] = useState(base.title);
-  const [body, setBody] = useState(isNew ? ADR_TEMPLATE : bodyOf(base));
-  const [tab, setTab] = useState("content");
-  const [reviewRunning, setReviewRunning] = useState(false);
-  const isAuthor = state === "sod" || design.author_id === "u-sato";
+  const base = state === "approved" ? designById("ADR-0004") : designs.find((d) => d.id === id) ?? designById("ADR-0003");
+  const design = base;
+  const [tab, setTab] = useState(state === "changesRequested" || state === "sod" ? "reviews" : "content");
 
   if (state === "loading") {
     return (
@@ -79,70 +79,62 @@ export function DesignDetail({ id }: { id: string }) {
     );
   }
 
-  const links: TraceLink[] = [
-    ...design.requirement_ids.map((rid) => ({ id: rid, title: requirements.find((r) => r.id === rid)?.title ?? "", kind: "要求", relation: "refines" })),
-    ...(design.id === "ADR-0003" ? [{ id: "REQ-0006", title: requirements.find((r) => r.id === "REQ-0006")!.title, kind: "要求", relation: "refines", ai: true, confidence: 0.62 }] : []),
-  ];
+  const meta = designMeta[design.id] ?? {};
+  const body = bodyOf(design);
+  const alternatives = meta.alternatives ?? defaultAlternatives();
+  const reviews: DesignReview[] = state === "sod"
+    ? [{ reviewer_id: design.author_id, at: "2026-11-22T09:00:00+09:00", result: "approved", via: `GitHub PR #${meta.pr ?? "—"} レビュー`, note: "作成者本人の承認" }, ...(meta.reviews ?? [])]
+    : meta.reviews ?? design.reviewer_ids.map((rid) => ({ reviewer_id: rid, at: design.updated_at, result: design.status === "approved" ? "approved" as const : "commented" as const, via: "GitHub PR レビュー" }));
+  const revisions = meta.revisions ?? [{ version: 1, at: design.updated_at, by: design.author_id, note: "作成" }];
   const findings = design.status === "approved" ? [] : designFindings(design);
-  const approvers: Approver[] = design.status === "approved"
-    ? design.reviewer_ids.map((rid) => ({ role: "設計者" as const, user_id: rid, status: "approved" as const, decided_at: design.updated_at, comment: "要求との対応を確認しました。" }))
-    : [{ role: "設計者", user_id: design.reviewer_ids[0] ?? "u-sato", status: design.status === "inReview" || design.status === "pending" ? "pending" : "draft" }];
-  const canDecide = (design.status === "inReview" || design.status === "pending") && !isAuthor && design.reviewer_ids.includes("u-sato");
+  const approvers: Approver[] = design.reviewer_ids.map((rid) => {
+    const r = reviews.find((x) => x.reviewer_id === rid);
+    return { role: "設計者" as const, user_id: rid, status: r?.result === "approved" ? "approved" as const : r?.result === "changesRequested" ? "returned" as const : "pending" as const, decided_at: r?.at, comment: r?.note };
+  });
+  const changesRequested = state === "changesRequested" || reviews.some((r) => r.result === "changesRequested");
+  const links: ChainLink[] = design.requirement_ids.map((rid) => ({ id: rid, title: requirements.find((r) => r.id === rid)?.title ?? "", stage: "設計", prov: { via: "trace/edges.yaml", provider: "github", confirmed_by: design.author_id, confirmed_at: design.updated_at }, to: reqPath(rid) }));
+  if (design.id === "ADR-0003") links.push({ id: "REQ-0006", title: requirements.find((r) => r.id === "REQ-0006")!.title, stage: "設計", ai: true, confidence: 0.62, to: reqPath("REQ-0006") });
 
   return (
-    <ProjectLayout active="design" trail={[{ label: "設計・ADR", to: paths.designs(org, project) }, { label: isNew ? "新規作成" : design.id }]}>
+    <ProjectLayout active="design" trail={[{ label: "設計・ADR", to: paths.designs(org, project) }, { label: design.id }]}>
       <PageHeader
-        id={isNew ? undefined : design.id}
-        title={isNew ? "設計・ADR を作成" : design.title}
-        status={isNew ? undefined : <StatusBadge vocab={ARTIFACT_STATUS[design.status]} />}
-        meta={isNew ? undefined : <><Tag square>{DESIGN_KIND[design.kind]}</Tag><span className="small muted">作成 {userById(design.author_id)?.name} · 更新 <Timestamp at={design.updated_at} /></span></>}
-        actions={
-          isNew ? null : (
-            <>
-              {editing ? (
-                <Button variant="primary" icon="check" onClick={() => { setDesign((d) => ({ ...d, title })); setEditing(false); toast({ kind: "success", message: "保存しました" }); }}>保存</Button>
-              ) : (
-                <Button icon="edit" onClick={() => setEditing(true)}>編集</Button>
-              )}
-              <Button icon="sparkles" loading={reviewRunning} onClick={() => { setReviewRunning(true); window.setTimeout(() => { setReviewRunning(false); setTab("review"); }, 1200); }}>AIでレビュー</Button>
-              {design.status === "draft" || design.status === "changing" ? (
-                <Button variant="primary" icon="arrowRight" onClick={() => { setDesign((d) => ({ ...d, status: "inReview" })); toast({ kind: "success", message: "レビューを依頼しました" }); }}>レビュー依頼</Button>
-              ) : null}
-            </>
-          )
+        id={design.id}
+        title={design.title}
+        status={<StatusBadge vocab={ARTIFACT_STATUS[design.status]} />}
+        meta={
+          <>
+            <Tag square>{DESIGN_KIND[design.kind]}</Tag>
+            <span className="small muted">v{revisions[revisions.length - 1].version}</span>
+            <SourceTag source={reqSource(designFile(design.id))} />
+          </>
         }
+        actions={<OpenInSource label="設計 PR を開く" />}
         tabs={
-          isNew ? undefined : (
-            <Tabs
-              value={tab}
-              onChange={setTab}
-              tabs={[
-                { value: "content", label: "内容" },
-                { value: "links", label: "関連", count: links.length },
-                { value: "review", label: "レビュー", count: findings.filter((f) => f.status === "unconfirmed").length + designComments.length },
-                { value: "history", label: "履歴" },
-              ]}
-            />
-          )
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { value: "content", label: "判断の内容" },
+              { value: "links", label: "要求への対応", count: links.length },
+              { value: "reviews", label: "レビューと承認", count: reviews.length },
+              { value: "ai", label: "AIの所見", count: findings.filter((f) => f.status === "unconfirmed").length, icon: "sparkles" },
+              { value: "history", label: "改訂", count: revisions.length },
+            ]}
+          />
         }
       />
+      {changesRequested && state !== "sod" ? (
+        <Banner tone="warn" title="レビューで変更が要求されています">設計者が正本で修正し、再レビューを受けるまで承認されません。</Banner>
+      ) : null}
+      {state === "sod" ? (
+        <SoDNotice reason={<>作成者（<ExternalActor userId={design.author_id} />）本人のレビュー承認は、承認として数えていません。別の設計者またはテックリードの承認が必要です。</>} />
+      ) : null}
       <DetailLayout
         main={
-          tab === "content" || isNew ? (
-            <div className="card stack">
-              {editing ? (
-                <>
-                  <TextField label="タイトル" required value={title} onChange={setTitle} placeholder="例: 基幹連携はファイル連携とする" />
-                  <MarkdownEditor label="本文" required value={body} onChange={setBody} suggestions={requirementCandidates} minHeight={280} />
-                  {isNew ? (
-                    <div className="row end">
-                      <Button variant="ghost" to={paths.designs(org, project)}>キャンセル</Button>
-                      <Button variant="primary" icon="check" onClick={() => toast({ kind: "success", message: "ADR-0005 を作成しました" })}>作成する</Button>
-                    </div>
-                  ) : null}
-                </>
-              ) : design.kind === "adr" ? (
-                ["背景", "決定", "選択肢", "結果"].map((h) => {
+          tab === "content" ? (
+            <div className="stack">
+              <div className="card stack">
+                {["背景", "決定"].map((h) => {
                   const m = body.split(/^## /m).find((s) => s.startsWith(h));
                   if (!m) return null;
                   return (
@@ -151,35 +143,78 @@ export function DesignDetail({ id }: { id: string }) {
                       <MarkdownViewer source={m.slice(h.length).trim()} />
                     </div>
                   );
-                })
-              ) : (
-                <MarkdownViewer source={body} collapsible />
-              )}
+                })}
+              </div>
+              <div className="card flush">
+                <div className="card-header"><span className="section-title">代替案</span></div>
+                <div className="table-wrap">
+                  <table className="table compact">
+                    <thead><tr><th>案</th><th>長所</th><th>短所</th><th>採否</th></tr></thead>
+                    <tbody>
+                      {alternatives.map((a) => (
+                        <tr key={a.name}>
+                          <td className="strong small">{a.name}</td>
+                          <td className="small">{a.pros}</td>
+                          <td className="small">{a.cons}</td>
+                          <td>{a.chosen ? <Tag tone="pass" square icon="check">採用</Tag> : <Tag square>不採用</Tag>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="card stack">
+                <div className="adr-section"><h3>判断理由</h3><p className="small">{meta.reason ?? "本書の「決定」を参照。"}</p></div>
+                <div className="adr-section"><h3>結果（受け入れる影響）</h3><p className="small">{meta.outcome ?? "関連する要求の受入基準を満たす。"}</p></div>
+                <ViewOnlyNote />
+              </div>
             </div>
           ) : tab === "links" ? (
             <div className="card stack">
               <span className="section-title">要求への対応</span>
-              <p className="small muted">点線は AI の候補です。確定するまでトレーサビリティに数えません。</p>
-              <TraceLinkEditor links={links} candidates={requirementCandidates} onChange={() => toast({ kind: "success", message: "要求への対応を更新しました" })} />
+              <p className="small muted">記録された場所と確定者を示します。AI の候補は確定するまでトレーサビリティに数えません。</p>
+              <ChainTable links={links} />
             </div>
-          ) : tab === "review" ? (
+          ) : tab === "reviews" ? (
             <div className="stack">
-              {reviewRunning ? <div className="card row"><span className="spinner" /> <span className="muted">AIが要求への対応漏れと矛盾を確認しています…</span></div> : null}
-              <AISectionHead count={findings.length} note="要求への対応漏れ・矛盾の候補。判定には使われません" />
-              {findings.length ? findings.map((f) => <AIFindingCard key={f.id} finding={f} />) : <p className="small muted">AIの所見はありません。</p>}
+              <div className="card flush">
+                <div className="card-header"><span className="section-title">レビューの記録</span></div>
+                <div className="table-wrap">
+                  <table className="table compact">
+                    <thead><tr><th>レビュー者</th><th>結果</th><th>記録された場所</th><th>日時</th></tr></thead>
+                    <tbody>
+                      {reviews.map((r, i) => (
+                        <tr key={i}>
+                          <td><ExternalActor userId={r.reviewer_id} /></td>
+                          <td>
+                            <Tag tone={r.reviewer_id === design.author_id ? "fail" : REVIEW_RESULT[r.result].tone} square>{r.reviewer_id === design.author_id ? "無効（作成者）" : REVIEW_RESULT[r.result].label}</Tag>
+                            {r.note ? <div className="tiny muted" style={{ marginTop: 4 }}>{r.note}</div> : null}
+                          </td>
+                          <td className="tiny muted">{r.via}</td>
+                          <td className="tiny muted"><Timestamp at={r.at} mode="absolute" /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <div className="card stack">
-                <span className="section-title">レビューコメント</span>
+                <span className="section-title">レビューコメント（正本から同期）</span>
                 <CommentThread comments={designComments} />
               </div>
+            </div>
+          ) : tab === "ai" ? (
+            <div className="stack">
+              <AISectionHead count={findings.length} note="要求への対応漏れ・矛盾の候補。判定には使われません" />
+              {findings.length ? findings.map((f) => <AIFindingCard key={f.id} finding={f} />) : <p className="small muted">AIの所見はありません。</p>}
             </div>
           ) : (
             <div className="card">
               <Timeline
-                items={[
-                  { id: "h3", actor: { kind: "ai", name: "設計レビュー" }, action: "所見を2件記録", at: "2026-11-21T09:30:00+09:00" },
-                  { id: "h2", actor: { kind: "human", name: userById(design.author_id)?.name ?? "" }, action: "レビューを依頼", at: "2026-11-20T10:00:00+09:00" },
-                  { id: "h1", actor: { kind: "human", name: userById(design.author_id)?.name ?? "" }, action: "作成", at: "2026-11-18T15:00:00+09:00" },
-                ]}
+                items={revisions
+                  .slice()
+                  .reverse()
+                  .map((r) => ({ id: `v${r.version}`, actor: { kind: "human" as const, name: nameOf(r.by) }, action: `v${r.version} を保存`, at: r.at, detail: r.note, kind: "status" as const }))}
               />
             </div>
           )
@@ -188,28 +223,22 @@ export function DesignDetail({ id }: { id: string }) {
           <>
             <MetaSection title="状態">
               <StatusBadge vocab={ARTIFACT_STATUS[design.status]} />
-              <StateFlow flow="requirement" current={ARTIFACT_FLOW_LABEL[design.status]} />
+              <StateFlow flow="design" current={ARTIFACT_FLOW_LABEL[design.status]} />
             </MetaSection>
-            {isNew ? null : (
-              <MetaSection title="レビューと承認">
-                <ApprovalPanel
-                  title="設計者・テックリードの承認"
-                  approvers={approvers}
-                  canDecide={canDecide}
-                  blockedReason={isAuthor && design.status !== "approved" ? "あなたはこの設計の作成者のため承認できません" : undefined}
-                  eligible={membersWithRole("設計者", "u-sato").concat(membersWithRole("PM", "u-sato"))}
-                  onDecide={(d) => { setDesign((x) => ({ ...x, status: d === "approved" ? "approved" : "draft" })); toast({ kind: "success", message: d === "approved" ? "承認しました" : "差し戻しました" }); }}
-                />
-              </MetaSection>
-            )}
+            <MetaSection title="承認">
+              <ApprovalPanel title="設計者・テックリードの承認" approvers={approvers} canDecide={false} />
+              <p className="tiny muted"><Icon name="info" size={12} /> 承認は正本の設計 PR のレビューで行われます。作成者本人の承認は数えません。</p>
+            </MetaSection>
             <MetaSection title="属性">
               <KeyValueList
                 stacked
                 items={[
                   { label: "種類", value: <Tag square>{DESIGN_KIND[design.kind]}</Tag> },
-                  { label: "作成者", value: <UserChip user={userById(design.author_id)} plain /> },
-                  { label: "レビュー者", value: design.reviewer_ids.length ? design.reviewer_ids.map((rid) => <UserChip key={rid} user={userById(rid)} plain />) : <span className="muted">未割当</span> },
-                  { label: "対応する要求", value: <span className="row" style={{ ["--gap" as string]: "6px" }}>{design.requirement_ids.map((r) => <a key={r} className="id-link" href={`#${paths.requirement(org, project, r)}`}>{r}</a>)}</span> },
+                  { label: "作成者", value: <ExternalActor userId={design.author_id} role="設計者" /> },
+                  { label: "対応する要求", value: <span className="row" style={{ ["--gap" as string]: "6px" }}>{design.requirement_ids.map((r) => <IdLink key={r} id={r} to={reqPath(r)} />)}</span> },
+                  { label: "正本", value: <span className="mono tiny">{designFile(design.id)}</span> },
+                  { label: "設計 PR", value: meta.pr ? <span className="mono small">#{meta.pr}</span> : <span className="muted">—</span> },
+                  { label: "更新日時", value: <Timestamp at={design.updated_at} mode="absolute" /> },
                 ]}
               />
             </MetaSection>
@@ -218,6 +247,10 @@ export function DesignDetail({ id }: { id: string }) {
       />
     </ProjectLayout>
   );
+}
+
+function nameOf(id: string) {
+  return userById(id)?.name ?? id;
 }
 
 export { designPath };

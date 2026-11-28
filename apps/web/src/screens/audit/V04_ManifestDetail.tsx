@@ -3,13 +3,15 @@ import { useState } from "react";
 import { useScreenState } from "../../lib/router";
 import { ORG, PROJECT, paths } from "../../lib/paths";
 import { fakeSha, manifestById, userById } from "../../mocks/core";
-import { manifestDetail } from "../../mocks/audit";
+import { manifestDetail, manifestExtra, VERIFY_FAILURE } from "../../mocks/audit";
+import type { VerifyFailure } from "../../mocks/audit";
 import { formatDateTime } from "../../lib/format";
 import {
   ActorLabel,
   Banner,
   Button,
   DetailLayout,
+  ExternalActor,
   HashDisplay,
   Icon,
   IdLink,
@@ -23,7 +25,6 @@ import {
   SignatureBadge,
   Tag,
   Timestamp,
-  UserChip,
   useToast,
 } from "../../ui";
 
@@ -34,12 +35,14 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
   const toast = useToast();
   const m = manifestById(id);
   const d = manifestDetail(m.id);
+  const x = manifestExtra(m.id);
+  const reason: VerifyFailure | undefined = state === "expired" ? "expired" : state === "storageMissing" ? "storageMissing" : state === "failed" || m.signature === "failed" ? "hashMismatch" : undefined;
   const [verifying, setVerifying] = useState(false);
-  const sig: Sig = state === "failed" ? "failed" : state === "unsigned" ? "unsigned" : state === "storing" ? "signed" : state === "verified" ? "verified" : m.signature;
+  const sig: Sig = state === "failed" || state === "expired" || state === "storageMissing" ? "failed" : state === "unsigned" ? "unsigned" : state === "storing" ? "signed" : state === "verified" ? "verified" : m.signature;
   const retention = state === "storing" || state === "unsigned" ? "pending" : m.retention;
   const failed = sig === "failed";
   // 検証失敗時に一致しない値（署名時の値と現在の値）
-  const mismatched: Record<string, string> = failed ? { test_report_sha256: fakeSha(`${m.id}-test-tampered`), artifact_sha256: fakeSha(`${m.id}-artifact-tampered`) } : {};
+  const mismatched: Record<string, string> = failed && reason === "hashMismatch" ? { test_report_sha256: fakeSha(`${m.id}-test-tampered`), artifact_sha256: fakeSha(`${m.id}-artifact-tampered`) } : {};
   const hashRow = (label: string, key: keyof typeof d) => {
     const signedValue = d[key] as string;
     const bad = key in mismatched;
@@ -54,9 +57,13 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
     };
   };
   const json = {
+    schema_version: x.schema_version,
     project: d.project,
     profile: d.profile,
+    profile_spec: x.profile_spec,
     control_pack_version: d.control_pack_version,
+    rule_version: x.rule_version,
+    template_version: x.template_version,
     commit_sha: d.commit_sha,
     policy_sha256: d.policy_sha256,
     requirements_snapshot_sha256: d.requirements_snapshot_sha256,
@@ -66,6 +73,8 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
     approvals: d.approvals.map((a) => ({ role: a.role, subject: userById(a.user_id)?.email ?? a.user_id, at: a.at })),
     ai_reviews: d.ai_reviews,
     exceptions: d.exceptions,
+    digests: x.digests.map((g) => ({ path: g.path, sha256: g.sha256 })),
+    retention_locator: x.retention_locator,
     created_at: d.created_at,
     signature: sig === "unsigned" ? null : `sig:${fakeSha(`${m.id}-sig`).slice(0, 48)}`,
   };
@@ -85,8 +94,10 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
       />
 
       {failed ? (
-        <Banner tone="fail" title="署名の検証に失敗しました">
-          署名後に内容が変更された可能性があります。一致しない値: テストレポートのハッシュ、成果物のハッシュ。この Manifest を証跡として使う前に、原因を調査してください（是正処置 COR-003 を参照）。
+        <Banner tone="fail" title={`署名の検証に失敗しました: ${reason ? VERIFY_FAILURE[reason].label : "不一致"}`} action={<Button size="sm" icon="signature" to={paths.signing(org)}>署名と検証</Button>}>
+          {reason ? VERIFY_FAILURE[reason].description : ""}
+          {reason === "hashMismatch" ? "一致しない値: テストレポートのハッシュ、成果物のハッシュ。" : ""}
+          この Manifest は証跡として扱われません（通過扱いにしません）。原因を調査してください（是正処置 COR-003 を参照）。
         </Banner>
       ) : sig === "unsigned" ? (
         <Banner tone="warn" title="署名待ちです">必要な承認がそろうと、システムが自動で署名します。</Banner>
@@ -141,13 +152,47 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
               />
             </Section>
 
+            <Section title="スキーマと版" sub="同じ入力と同じ版で、同じ判定と目録を再現するための情報">
+              <KeyValueList
+                cols={2}
+                items={[
+                  { label: "スキーマの版", value: <span className="mono">{x.schema_version}</span> },
+                  { label: "プロファイル仕様", value: x.profile_spec },
+                  { label: "Control Pack", value: d.control_pack_version },
+                  { label: "ゲートのルール", value: <span className="mono">{x.rule_version}</span> },
+                  { label: "テンプレート", value: <span className="mono">{x.template_version}</span> },
+                  { label: "ポリシー", value: x.policy_version },
+                ]}
+              />
+            </Section>
+
+            <Section title="ダイジェスト一覧" sub={`${x.digests.length}ファイル。評価者は同じハッシュで独立に照合できます`} flush>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead><tr><th>ファイル</th><th>SHA-256</th><th className="num">サイズ</th></tr></thead>
+                  <tbody>
+                    {x.digests.map((g) => {
+                      const bad = reason === "hashMismatch" && (g.path.startsWith("tests/") || g.path.startsWith("artifacts/"));
+                      return (
+                        <tr key={g.path}>
+                          <td className="mono small">{g.path}</td>
+                          <td><HashDisplay value={g.sha256} verified={sig === "verified" ? "match" : bad ? "mismatch" : undefined} /></td>
+                          <td className="num small">{g.size}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+
             <Section title="承認" sub={`${d.approvals.length}件`} flush>
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>ロール</th><th>承認者</th><th>時刻</th></tr></thead>
+                  <thead><tr><th>ロール</th><th>承認者（外部IDで記録）</th><th>時刻</th></tr></thead>
                   <tbody>
                     {d.approvals.map((a) => (
-                      <tr key={a.role}><td>{a.role}</td><td><UserChip user={userById(a.user_id)} showRole={false} /></td><td><Timestamp at={a.at} mode="absolute" /></td></tr>
+                      <tr key={a.role}><td>{a.role}</td><td><ExternalActor userId={a.user_id} role={a.role} /></td><td><Timestamp at={a.at} mode="absolute" /></td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -180,6 +225,24 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
               )}
             </Section>
 
+            <Section title="検証の履歴" flush>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead><tr><th>日時</th><th>結果</th><th>理由</th><th>実施</th></tr></thead>
+                  <tbody>
+                    {(failed && reason ? [{ at: "2026-11-27T09:00:00+09:00", result: "fail" as const, reason, by: "定期検証（システム）" }, ...x.verify.slice(1)] : x.verify).map((v) => (
+                      <tr key={v.at}>
+                        <td><Timestamp at={v.at} mode="absolute" /></td>
+                        <td>{v.result === "pass" ? <Tag tone="pass" icon="check">一致</Tag> : <Tag tone="fail" icon="xCircle">失敗</Tag>}</td>
+                        <td className="small">{v.reason ? VERIFY_FAILURE[v.reason].label : "—"}</td>
+                        <td className="small">{v.by}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+
             <Section title="生データ">
               <JsonViewer value={json} />
             </Section>
@@ -189,7 +252,7 @@ export function ManifestDetail({ org = ORG, project = PROJECT, id }: { org?: str
           <>
             <MetaSection title="保管">
               <RetentionBadge state={retention} until={m.retention_until} />
-              <KeyValueList stacked items={[{ label: "保管先", value: d.storage }, { label: "保持期限", value: m.retention_until === "-" ? "—" : m.retention_until }, { label: "削除・上書き", value: "保持期限まで誰も削除できません" }]} />
+              <KeyValueList stacked items={[{ label: "保管先", value: d.storage }, { label: "保管先ロケーター", value: <span className="mono tiny" style={{ wordBreak: "break-all" }}>{reason === "storageMissing" ? <span className="text-fail">{x.retention_locator}（見つかりません）</span> : x.retention_locator}</span> }, { label: "保持期限", value: m.retention_until === "-" ? "—" : m.retention_until }, { label: "削除・上書き", value: "保持期限まで誰も削除できません" }]} />
             </MetaSection>
             <MetaSection title="対象">
               <KeyValueList stacked items={[{ label: "種類", value: m.target_kind === "release" ? "リリース" : "ゲート実行" }, { label: "対象", value: <span className="mono">{m.target}</span> }, { label: "承認の数", value: m.approval_count }]} />

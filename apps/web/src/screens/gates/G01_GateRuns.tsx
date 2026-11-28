@@ -5,9 +5,13 @@ import { paths } from "../../lib/paths";
 import { GATE_STATUS } from "../../lib/vocab";
 import type { GateRun } from "../../lib/types";
 import { gateRuns } from "../../mocks/core";
+import { CHANGE_TERM, otherRuns, pullByNumber } from "../../mocks/gates";
+import type { ScmProvider } from "../../mocks/gates";
 import {
   ActorLabel,
   Button,
+  ExternalActor,
+  ProviderBadge,
   DataTable,
   EmptyState,
   EnforcementBadge,
@@ -25,12 +29,20 @@ import {
 } from "../../ui";
 import type { Column } from "../../ui";
 
+type RunRow = GateRun & { provider: ScmProvider; repo: string };
+
+const allRuns: RunRow[] = [
+  ...gateRuns.map((r) => ({ ...r, provider: "github" as ScmProvider, repo: pullByNumber(r.pr_number)?.repo ?? "sample-soft/order-api" })),
+  ...otherRuns,
+];
+
 export function GateRunsScreen({ org, project }: { org: string; project: string }) {
   const state = useScreenState();
   const [values, setValues] = useState<Record<string, string>>(state === "filtered" ? { verdict: "notRun" } : {});
   const [search, setSearch] = useState("");
 
-  const rows = gateRuns.filter((r) => {
+  const rows = allRuns.filter((r) => {
+    if (values.provider && r.provider !== values.provider) return false;
     if (values.verdict && r.verdict !== values.verdict) return false;
     if (values.gate && r.gates[values.gate as "A"] !== "block") return false;
     if (values.author && r.author.kind !== values.author) return false;
@@ -41,20 +53,21 @@ export function GateRunsScreen({ org, project }: { org: string; project: string 
   });
   const data = state === "empty" ? [] : rows;
 
-  const columns: Column<GateRun>[] = [
+  const columns: Column<RunRow>[] = [
     { key: "id", header: "実行ID", render: (r) => <span className="mono small">{r.id}</span>, sortValue: (r) => r.id },
     {
       key: "target",
       header: "対象",
       render: (r) => (
         <span className="stack" style={{ ["--gap" as string]: "2px" }}>
-          <span className="strong" style={{ fontWeight: 500 }}>{r.pr_number ? `#${r.pr_number} ` : ""}{r.pr_title}</span>
-          <span className="tiny muted mono">{r.branch}</span>
+          <span className="strong" style={{ fontWeight: 500 }}>{r.pr_number ? `${CHANGE_TERM[r.provider]} #${r.pr_number} ` : ""}{r.pr_title}</span>
+          <span className="tiny muted mono">{r.repo} · {r.branch}</span>
         </span>
       ),
     },
+    { key: "provider", header: "提供元", render: (r) => <ProviderBadge provider={r.provider} size="sm" />, sortValue: (r) => r.provider },
     { key: "commit", header: "コミット", render: (r) => <span onClick={(e) => e.stopPropagation()}><HashDisplay value={r.commit_sha} /></span> },
-    { key: "author", header: "作成者", render: (r) => <ActorLabel kind={r.author.kind} name={r.author.name} size="sm" />, sortValue: (r) => r.author.kind },
+    { key: "author", header: "作成者", render: (r) => (r.author.kind === "human" ? <ExternalActor userId={r.author.user_id} name={r.author.name} /> : <ActorLabel kind={r.author.kind} name={r.author.name} size="sm" />), sortValue: (r) => r.author.kind },
     { key: "gates", header: "ゲート A〜D", render: (r) => <GateSummaryStrip gates={r.gates} /> },
     { key: "verdict", header: "総合判定", render: (r) => <StatusBadge vocab={GATE_STATUS[r.verdict]} size="sm" />, sortValue: (r) => r.verdict },
     { key: "enforcement", header: "強制レベル", render: (r) => <EnforcementBadge level={r.enforcement} /> },
@@ -62,16 +75,22 @@ export function GateRunsScreen({ org, project }: { org: string; project: string 
     { key: "at", header: "実行日時", render: (r) => <Timestamp at={r.started_at} />, sortValue: (r) => r.started_at },
   ];
 
-  const blocked = gateRuns.filter((r) => r.verdict === "block").length;
-  const exceptions = gateRuns.filter((r) => r.verdict === "exception").length;
-  const running = gateRuns.filter((r) => r.verdict === "running").length;
+  const blocked = allRuns.filter((r) => r.verdict === "block").length;
+  const exceptions = allRuns.filter((r) => r.verdict === "exception").length;
+  const running = allRuns.filter((r) => r.verdict === "running").length;
 
   return (
     <ProjectLayout org={org} project={project} active="gates" trail={[{ label: "ゲート実行" }]}>
       <PageHeader
         title="ゲート実行"
-        description="PR とブランチごとに、ゲート A〜D の判定結果を一覧します。判定は決定論的なルールと人間の承認だけで行います。"
-        actions={<Button icon="download">CSV 出力</Button>}
+        description="接続したすべての Git サービスの PR／MR とブランチについて、ゲート A〜D の判定結果を一覧します。判定は決定論的なルールと人間の承認だけで行います。"
+        actions={
+          <>
+            <Button icon="settings" to={paths.gateSettings(org, project)}>適用設定</Button>
+            <Button icon="shieldCheck" to={paths.gateRegistration(org, project)}>必須チェックの登録状況</Button>
+            <Button icon="download">CSV 出力</Button>
+          </>
+        }
       />
       <div className="grid cols-4">
         <StatCard label="ブロック中" value={blocked} unit="件" tone={blocked ? "danger" : undefined} icon="xCircle" />
@@ -82,10 +101,11 @@ export function GateRunsScreen({ org, project }: { org: string; project: string 
       <FilterBar
         search={search}
         onSearch={setSearch}
-        searchPlaceholder="PR 番号・タイトル・ブランチ"
+        searchPlaceholder="PR／MR 番号・タイトル・ブランチ"
         values={values}
         onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))}
         filters={[
+          { key: "provider", label: "提供元", options: (["github", "gitlab", "codecommit", "azureRepos"] as ScmProvider[]).map((p) => ({ value: p, label: { github: "GitHub", gitlab: "GitLab", codecommit: "AWS CodeCommit", azureRepos: "Azure Repos" }[p] })) },
           { key: "verdict", label: "判定", options: Object.entries(GATE_STATUS).map(([value, v]) => ({ value, label: v.label })) },
           { key: "gate", label: "ブロックしたゲート", options: ["A", "B", "C", "D"].map((g) => ({ value: g, label: `ゲート${g}` })) },
           { key: "author", label: "作成者の種類", options: [{ value: "human", label: "人間" }, { value: "ai", label: "AIエージェント" }, { value: "system", label: "システム" }] },

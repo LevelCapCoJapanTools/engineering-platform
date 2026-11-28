@@ -5,7 +5,7 @@ import { Icon } from "./icons";
 import type { IconName } from "./icons";
 import { Link } from "../lib/router";
 import { daysUntil, formatDate, formatDateTime, percent, relativeTime } from "../lib/format";
-import {
+import { EXECUTIVE_ROLES,
   ACTOR_KIND,
   CONTROL_LAYER,
   DATA_CLASS,
@@ -101,7 +101,7 @@ export function AvatarStack({ users, max = 4 }: { users: User[]; max?: number })
 
 /** RoleBadge */
 export function RoleBadge({ role }: { role: Role }) {
-  const tone: Tone = role === "顧客" || role === "評価者" ? "warn" : role === "パートナー管理者" ? "special" : "neutral";
+  const tone: Tone = role === "顧客" || role === "評価者" ? "warn" : role === "パートナー管理者" ? "special" : EXECUTIVE_ROLES.includes(role) ? "info" : "neutral";
   return <span className={cx("badge square", `tone-${tone}`)}>{role}</span>;
 }
 

@@ -39,13 +39,17 @@ export function fakeSha(seed: string): string {
 export const TODAY = "2026-11-27";
 
 export const users: User[] = [
-  { id: "u-sato", name: "佐藤 美咲", initials: "佐", email: "sato@sample-soft.example", roles: ["PM", "リリース管理者"], kind: "member", status: "active", github: "msato-dev", joined_at: "2025-04-01", last_active_at: "2026-11-27T09:12:00+09:00" },
-  { id: "u-takahashi", name: "高橋 健", initials: "高", email: "takahashi@sample-soft.example", roles: ["アナリスト"], kind: "member", status: "active", github: "ktakahashi", joined_at: "2025-04-01", last_active_at: "2026-11-27T08:40:00+09:00" },
-  { id: "u-tanaka", name: "田中 陽介", initials: "田", email: "tanaka@sample-soft.example", roles: ["設計者"], kind: "member", status: "active", github: "ytanaka", joined_at: "2025-06-10", last_active_at: "2026-11-26T19:02:00+09:00" },
-  { id: "u-suzuki", name: "鈴木 彩", initials: "鈴", email: "suzuki@sample-soft.example", roles: ["開発者"], kind: "member", status: "active", github: "aya-suzuki", joined_at: "2025-09-01", last_active_at: "2026-11-27T10:05:00+09:00" },
-  { id: "u-ito", name: "伊藤 誠", initials: "伊", email: "ito@sample-soft.example", roles: ["QA"], kind: "member", status: "active", github: "mito-qa", joined_at: "2025-04-01", last_active_at: "2026-11-26T17:30:00+09:00" },
-  { id: "u-watanabe", name: "渡辺 翔", initials: "渡", email: "watanabe@sample-soft.example", roles: ["開発者", "リリース管理者"], kind: "member", status: "active", github: "sho-w", joined_at: "2026-01-15", last_active_at: "2026-11-25T12:00:00+09:00" },
-  { id: "u-yamamoto", name: "山本 結衣", initials: "山", email: "yamamoto@sample-soft.example", roles: ["組織管理者", "ポリシー管理者"], kind: "member", status: "active", github: "yui-yamamoto", joined_at: "2025-04-01", last_active_at: "2026-11-27T07:58:00+09:00" },
+  { id: "u-kimura", name: "木村 達也", initials: "木", email: "kimura@sample-soft.example", roles: ["経営者", "案件スポンサー"], title: "代表取締役", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-27T10:20:00+09:00" },
+  { id: "u-mori", name: "森 由紀子", initials: "森", email: "mori@sample-soft.example", roles: ["CTO", "案件スポンサー"], title: "取締役 CTO", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-27T09:50:00+09:00" },
+  { id: "u-ishii", name: "石井 浩二", initials: "石", email: "ishii@sample-soft.example", roles: ["事業部長"], title: "受託開発事業部長", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-26T18:10:00+09:00" },
+  { id: "u-okada", name: "岡田 真理", initials: "岡", email: "okada@sample-soft.example", roles: ["事業責任者"], title: "自社サービス事業責任者", account: true, kind: "member", status: "invited", joined_at: undefined },
+  { id: "u-sato", name: "佐藤 美咲", initials: "佐", email: "sato@sample-soft.example", roles: ["PM", "リリース管理者"], account: false, external_ids: [{ provider: "github", handle: "msato-dev" }, { provider: "githubProjects", handle: "msato-dev" }, { provider: "googleCalendar", handle: "sato@sample-soft.example" }], kind: "member", status: "active", github: "msato-dev", joined_at: "2025-04-01", last_active_at: "2026-11-27T09:12:00+09:00" },
+  { id: "u-takahashi", name: "高橋 健", initials: "高", email: "takahashi@sample-soft.example", roles: ["アナリスト"], account: false, external_ids: [{ provider: "github", handle: "ktakahashi" }], kind: "member", status: "active", github: "ktakahashi", joined_at: "2025-04-01", last_active_at: "2026-11-27T08:40:00+09:00" },
+  { id: "u-tanaka", name: "田中 陽介", initials: "田", email: "tanaka@sample-soft.example", roles: ["設計者"], account: false, external_ids: [{ provider: "github", handle: "ytanaka" }], kind: "member", status: "active", github: "ytanaka", joined_at: "2025-06-10", last_active_at: "2026-11-26T19:02:00+09:00" },
+  { id: "u-suzuki", name: "鈴木 彩", initials: "鈴", email: "suzuki@sample-soft.example", roles: ["開発者"], account: false, external_ids: [{ provider: "github", handle: "aya-suzuki" }, { provider: "slack", handle: "@aya" }], kind: "member", status: "active", github: "aya-suzuki", joined_at: "2025-09-01", last_active_at: "2026-11-27T10:05:00+09:00" },
+  { id: "u-ito", name: "伊藤 誠", initials: "伊", email: "ito@sample-soft.example", roles: ["QA"], account: false, external_ids: [{ provider: "github", handle: "mito-qa" }], kind: "member", status: "active", github: "mito-qa", joined_at: "2025-04-01", last_active_at: "2026-11-26T17:30:00+09:00" },
+  { id: "u-watanabe", name: "渡辺 翔", initials: "渡", email: "watanabe@sample-soft.example", roles: ["開発者", "リリース管理者"], account: false, external_ids: [{ provider: "github", handle: "sho-w" }, { provider: "pagerduty", handle: "watanabe" }], kind: "member", status: "active", github: "sho-w", joined_at: "2026-01-15", last_active_at: "2026-11-25T12:00:00+09:00" },
+  { id: "u-yamamoto", name: "山本 結衣", initials: "山", email: "yamamoto@sample-soft.example", roles: ["組織管理者", "ポリシー管理者"], account: true, kind: "member", status: "active", github: "yui-yamamoto", joined_at: "2025-04-01", last_active_at: "2026-11-27T07:58:00+09:00" },
   { id: "u-kobayashi", name: "小林 直人", initials: "小", email: "kobayashi@sample-soft.example", roles: ["開発者"], kind: "member", status: "invited", joined_at: undefined },
   { id: "u-kato", name: "加藤 遥", initials: "加", email: "kato@sample-soft.example", roles: ["QA"], kind: "member", status: "disabled", joined_at: "2025-04-01", last_active_at: "2026-06-30T18:00:00+09:00" },
   { id: "u-nakamura", name: "中村 拓也", initials: "中", email: "nakamura@kakuu-shoji.example", roles: ["顧客"], kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-05-20", last_active_at: "2026-11-26T15:20:00+09:00" },
@@ -54,7 +58,7 @@ export const users: User[] = [
 ];
 
 export const userById = (id?: string) => users.find((u) => u.id === id);
-export const CURRENT_USER_ID = "u-sato";
+export const CURRENT_USER_ID = "u-kimura";
 export const currentUser = users.find((u) => u.id === CURRENT_USER_ID)!;
 
 export const orgs: Org[] = [

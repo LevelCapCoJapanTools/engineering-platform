@@ -10,17 +10,21 @@ const supports = [
   "人の判断・承認を、誰がいつ行ったかとともに記録する",
   "判定と承認の結果を、改ざん耐性のある証跡として保管する",
   "評価者に提示する監査パックを出力する",
+  "経営層が、案件の計画・実績・リスクと証跡の準備状況を確認し、判断を記録する",
 ];
 const notSupports = [
   "認証を行うこと、認証の取得を保証すること",
   "AI による適合・不適合の判定",
   "完成したソフトウェアの品質や適合性の保証",
   "規格本文の提供（規格は正規に入手してください）",
+  "経営層だけでプロジェクト管理や実装のプロセスを代替すること（実際の作業と承認は担当者が行い、その記録を集めます）",
 ];
 const refs = [
   { no: "ISO/IEC 29110-4-1:2018", role: "Basic プロファイルの仕様（統制項目の基準として参照）" },
   { no: "ISO/IEC 29110-5-1-2:2025", role: "Basic プロファイルの実施ガイド（運用の参考）" },
-  { no: "ISO/IEC 29110-5-5:2026", role: "Agile／DevOps への適用ガイド（CI/CD への適用の参考）" },
+  { no: "ISO/IEC 29110-5-5:2026", role: "Agile／DevOps への適用ガイド（CI/CD への適用の参考。専門家のレビュー後に Control Pack に反映）" },
+  { no: "ISO/IEC 29110-5-4:2025", role: "アジャイル開発のガイド（補足の参考候補）" },
+  { no: "ISO/IEC 29110-1-1:2024", role: "概要と用語（VSE の範囲の参考）" },
   { no: "ISO/IEC 29110-3-2:2018", role: "認証スキーム（認証との境界の参考）" },
 ];
 
@@ -55,7 +59,7 @@ export function P05Standards() {
         </section>
         <section className="card stack" style={{ ["--gap" as string]: "8px" }}>
           <h2 className="section-title">対象プロファイル</h2>
-          <p className="small">Generic Profile Group の Basic プロファイル（単一チーム・単一製品のソフトウェア開発）。セーフティクリティカルな開発は対象外です。Entry・Intermediate・Advanced は今後対応予定です。</p>
+          <p className="small">Generic Profile Group の Basic プロファイル（単一チーム・単一製品のソフトウェア開発）。導入時に人数・製品数・クリティカリティを記録し、範囲外の案件には「対応」と表示しません。セーフティクリティカルな開発は対象外です。Entry・Intermediate・Advanced、システム開発は別の版・別の適用範囲として今後対応予定です。</p>
         </section>
         <section className="card flush">
           <div className="card-header"><h2 className="section-title">参照する規格</h2></div>
@@ -66,7 +70,7 @@ export function P05Standards() {
             </table>
           </div>
         </section>
-        <p className="small muted">統制項目は自社で作成した ID（例: CTL-PM-001）と説明で表し、規格本文は掲載・利用していません。「ISO」は国際標準化機構の登録商標であり、本サービスは国際標準化機構による承認・認証を受けたものではありません。</p>
+        <p className="small muted">統制項目は自社で作成した ID（例: CTL-PM-001）と説明で表し、規格本文は掲載・利用していません。AI のプロンプトや評価データにも規格本文を含めません。統制項目の対応付けは、規格の専門家によるレビューを経て公開します。「ISO」は国際標準化機構の登録商標であり、本サービスは国際標準化機構による承認・認証を受けたものではありません。</p>
         <div><Button variant="primary" to={paths.contact()} iconRight="arrowRight">PoCを相談</Button></div>
       </div>
     </PublicLayout>

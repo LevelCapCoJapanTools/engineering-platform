@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
-import { APPROVAL_STATUS, GATE_STATUS, RELEASE_STATUS } from "../../lib/vocab";
+import { APPROVAL_STATUS, DECISION_STATUS, GATE_STATUS, RELEASE_STATUS } from "../../lib/vocab";
 import type { ReleaseStatus } from "../../lib/vocab";
 import type { Approver } from "../../lib/types";
 import { formatDate } from "../../lib/format";
-import { exceptionById, releaseById, releases } from "../../mocks/core";
-import { artifacts, includedChanges, knownIssues, releaseChecklist, releaseNotes } from "../../mocks/releases";
+import { exceptionById, releaseById, releases, userById } from "../../mocks/core";
+import { decisions } from "../../mocks/portfolio";
+import { artifacts, goNoGoCriteria, includedChanges, knownIssues, postReview, releaseChecklist, releaseNotes } from "../../mocks/releases";
 import {
   ApprovalPanel,
   Banner,
@@ -16,16 +17,22 @@ import {
   ConfirmDialog,
   DetailLayout,
   ExceptionSummary,
+  ExternalActor,
   HashDisplay,
   IdLink,
   KeyValueList,
-  MarkdownEditor,
+  MarkdownViewer,
   MetaSection,
+  Modal,
   MoreMenu,
+  OptionCard,
   PageHeader,
   ProjectLayout,
+  ResponsibilitySplit,
   Section,
   SignatureBadge,
+  SourceTag,
+  TextArea,
   StateFlow,
   StatusBadge,
   Tag,
@@ -39,9 +46,14 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
   const base = state === "released" ? releaseById("rel-130") : releases.find((r) => r.id === id) ?? releases[0];
   const ready = state === "ready" || state === "released";
   const [status, setStatus] = useState<ReleaseStatus>(state === "ready" ? "pending" : base.status);
-  const [notes, setNotes] = useState(releaseNotes);
-  const [aiDraft, setAiDraft] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [decideOpen, setDecideOpen] = useState(false);
+  const [choice, setChoice] = useState("conditional");
+  const [reason, setReason] = useState("");
+  const [conditions, setConditions] = useState("");
+  const [decided, setDecided] = useState<string | null>(state === "decided" ? "conditional" : null);
+  const decision = decisions.find((d) => d.id === "DEC-0033");
+  const criteria = goNoGoCriteria(ready);
   const released = status === "released" || status === "accepted";
   const checklist = releaseChecklist(ready);
   const unmet = checklist.filter((c) => c.state !== "ok").length;
@@ -53,6 +65,12 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
     { role: "PM", user_id: "u-sato", status: released ? "approved" : "pending", decided_at: released ? "2026-11-05T16:35:00+09:00" : undefined },
   ];
   const approveReason = unmet ? `リリースゲートのチェックが ${unmet} 件未充足のため承認できません` : undefined;
+  const CHOICES = [
+    { value: "go", title: "Go", description: "条件なしでリリースを認める" },
+    { value: "conditional", title: "条件付き Go", description: "条件を満たした場合にリリースを認める（条件は必須）" },
+    { value: "noGo", title: "No-Go", description: "リリースを認めない。再判断の日を決める" },
+  ];
+  const decisionLabel = (v: string) => CHOICES.find((c) => c.value === v)?.title ?? v;
 
   const main = (
     <>
@@ -64,7 +82,44 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
       <Section title="リリースゲート" sub="判定の主体（CI／人間）を項目ごとに表示します" actions={<StatusBadge vocab={GATE_STATUS[gate]} />}>
         <ChecklistPanel items={checklist} title="チェック項目" />
       </Section>
-      <Section title="成果物" sub="ダイジェストと署名" flush>
+      <Section
+        title="Go/No-Go の判断"
+        sub="根拠と条件を記録します。リリースの承認（実務）とは別に、影響の大きいリリースは案件スポンサーが判断します"
+        actions={decided ? <Tag tone={decided === "noGo" ? "fail" : decided === "go" ? "pass" : "special"}>{decisionLabel(decided)}（判断済み）</Tag> : decision ? <StatusBadge vocab={DECISION_STATUS[decision.status]} size="sm" /> : null}
+      >
+        <div className="stack">
+          <div className="table-wrap">
+            <table className="table compact">
+              <thead><tr><th>判断基準</th><th>状態</th><th>根拠</th></tr></thead>
+              <tbody>
+                {criteria.map((c) => (
+                  <tr key={c.id}>
+                    <td className="small strong">{c.title}</td>
+                    <td>{c.state === "ok" ? <Tag tone="pass" icon="check">充足</Tag> : c.state === "ng" ? <Tag tone="fail" icon="xCircle">未充足</Tag> : <Tag tone="warn" icon="clock">確認中</Tag>}</td>
+                    <td className="small">{c.basis}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ResponsibilitySplit
+            decide={<span>案件スポンサー: <ExternalActor userId="u-kimura" /></span>}
+            act={<span>リリースの準備・承認: <ExternalActor userId="u-watanabe" role="リリース管理者" /></span>}
+            note="Go/No-Go は経営判断として記録し、判断の結果と条件を Evidence Manifest に含めます。"
+          />
+          {decided ? (
+            <Banner tone={decided === "noGo" ? "fail" : "info"} title={`${decisionLabel(decided)} と判断しました（${userById("u-kimura")?.name}・2026-11-27 10:30）`}>
+              {decided === "conditional" ? `条件: ${conditions || "EXC-0007 の原因を 12/3 までに修正し、ゲートB を通過すること"}` : decided === "noGo" ? "再判断の日: 2026-12-04" : "条件はありません。"}
+            </Banner>
+          ) : decision ? (
+            <div className="row between">
+              <span className="small">関連する経営判断: <IdLink id={decision.id} to={paths.decision(org, decision.id)} /> {decision.title}</span>
+              <Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.decision(org, decision.id)}>経営判断を開く</Button>
+            </div>
+          ) : null}
+        </div>
+      </Section>
+      <Section title="成果物" sub="ダイジェスト・署名・SBOM" flush>
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>名前</th><th>SHA-256</th><th>署名</th><th>SBOM</th><th className="num">サイズ</th></tr></thead>
@@ -82,7 +137,7 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
           </table>
         </div>
       </Section>
-      <Section title="含まれる変更" flush>
+      <Section title="リリース範囲" sub="このリリースに含まれる要求・変更要求・PR" flush>
         <div className="table-wrap">
           <table className="table compact">
             <tbody>
@@ -97,14 +152,8 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
           </table>
         </div>
       </Section>
-      <Section title="リリースノート">
-        <MarkdownEditor
-          value={notes}
-          onChange={(v) => { setNotes(v); setAiDraft(false); }}
-          aiDraft={aiDraft}
-          onAiDraft={() => { setNotes(`${releaseNotes}\n\n## 移行手順\n\n- 特別な移行作業は不要です`); setAiDraft(true); }}
-          minHeight={200}
-        />
+      <Section title="リリースノート" actions={<SourceTag source={{ provider: "github", label: "docs/release-notes.md", synced_at: "2026-11-27T10:28:00+09:00", status: "healthy" }} />}>
+        <MarkdownViewer source={releaseNotes} />
       </Section>
       <Section title="未解決事項">
         <div className="stack">
@@ -123,6 +172,35 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
           </div>
         </div>
       </Section>
+      {released ? (
+        <Section title="事後レビュー" sub={`実施日 ${formatDate(postReview.held_at)}`}>
+          <div className="grid cols-2">
+            <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+              <span className="label">よかったこと</span>
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{postReview.good.map((g) => <li key={g}>{g}</li>)}</ul>
+            </div>
+            <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+              <span className="label">課題</span>
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{postReview.issues.map((g) => <li key={g}>{g}</li>)}</ul>
+            </div>
+          </div>
+          <div className="table-wrap" style={{ marginTop: 12 }}>
+            <table className="table compact">
+              <thead><tr><th>改善の対応</th><th>担当</th><th>期限</th><th>状態</th></tr></thead>
+              <tbody>
+                {postReview.actions.map((a) => (
+                  <tr key={a.title}>
+                    <td className="small">{a.title}</td>
+                    <td><ExternalActor userId={a.owner} /></td>
+                    <td className="small">{formatDate(a.due)}</td>
+                    <td>{a.done ? <Tag tone="pass" icon="check">完了</Tag> : <Tag icon="clock">対応中</Tag>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      ) : null}
     </>
   );
 
@@ -134,8 +212,8 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
       <MetaSection title="リリース承認">
         <ApprovalPanel
           approvers={approvers}
-          canDecide={ready && !released}
-          blockedReason={!ready ? approveReason : undefined}
+          canDecide={false}
+          blockedReason={!ready ? approveReason : released ? undefined : "リリースの承認は、リリース管理者と PM が Git サービス上で行い、外部IDで記録します。"}
           eligible={!ready ? membersWithRole("リリース管理者") : undefined}
           onDecide={(d) => {
             if (d === "approved") { setStatus("released"); toast({ kind: "success", message: `${base.version} をリリースしました。Manifest に署名します` }); }
@@ -170,13 +248,40 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
         status={RELEASE_STATUS[status]}
         actions={
           <>
-            <Button variant="primary" icon="check" disabled={!ready || released} disabledReason={approveReason ?? (released ? "承認済みです" : undefined)} onClick={() => setConfirm(true)}>リリースを承認</Button>
-            <Button icon="mail" disabled={!released} disabledReason="リリース後に依頼できます" onClick={() => { toast({ kind: "success", message: "顧客に受入を依頼しました" }); navigate(paths.acceptance(org, project, base.id)); }}>受入を依頼</Button>
-            <MoreMenu items={[{ label: "ゲート実行を開く", icon: "shield", onClick: () => navigate(paths.gates(org, project)) }, { label: "納入物一覧を出力", icon: "download" }]} />
+            <Button variant="primary" icon="flag" disabled={released || !!decided} disabledReason={released ? "リリース済みです" : "判断済みです"} onClick={() => setDecideOpen(true)}>Go/No-Go を判断</Button>
+            <Button icon="arrowRight" to={paths.acceptance(org, project, base.id)}>受入の状況</Button>
+            <MoreMenu items={[{ label: "ゲート実行を開く", icon: "shield", onClick: () => navigate(paths.gates(org, project)) }, { label: "構成管理（ベースライン）", icon: "commit", onClick: () => navigate(paths.baselines(org, project)) }, { label: "納入物一覧を出力", icon: "download" }]} />
           </>
         }
       />
       <DetailLayout main={main} side={side} />
+      <Modal
+        open={decideOpen}
+        onClose={() => setDecideOpen(false)}
+        title={`${base.version} の Go/No-Go`}
+        description="判断は経営判断として記録され、取り消せません。条件付きの場合は条件が必須です。"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDecideOpen(false)}>キャンセル</Button>
+            <Button
+              variant="primary"
+              disabled={!reason.trim() || (choice === "conditional" && !conditions.trim())}
+              disabledReason={!reason.trim() ? "理由を入力してください" : "条件を入力してください"}
+              onClick={() => { setDecided(choice); setDecideOpen(false); toast({ kind: "success", message: `${decisionLabel(choice)} と判断しました。リリース管理者と PM に通知しました` }); }}
+            >
+              判断を記録
+            </Button>
+          </>
+        }
+      >
+        <div className="stack">
+          <div className="stack" style={{ ["--gap" as string]: "8px" }}>
+            {CHOICES.map((c) => <OptionCard key={c.value} name="gonogo" value={c.value} checked={choice === c.value} onChange={setChoice} title={c.title} description={c.description} />)}
+          </div>
+          <TextArea label="理由" required rows={3} value={reason} onChange={setReason} placeholder="例: 遅延は 7 日以内で、顧客の確約日の範囲内のため" />
+          {choice === "conditional" ? <TextArea label="条件" required rows={2} value={conditions} onChange={setConditions} placeholder="例: EXC-0007 の原因を 12/3 までに修正し、ゲートB を通過すること" /> : null}
+        </div>
+      </Modal>
       <ConfirmDialog
         open={confirm}
         onClose={() => setConfirm(false)}

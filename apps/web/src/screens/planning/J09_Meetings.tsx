@@ -1,4 +1,5 @@
-// 画面ID: J-09 議事録（一覧と詳細）
+// 画面ID: J-09 会議・合意（一覧と詳細）
+// 会議の日時は共有カレンダー、議事メモは文書リポジトリから同期する。決定事項は決定者・日時・内容とともに、要求・リスク・変更へリンクする。
 import { useState } from "react";
 import {
   AvatarStack,
@@ -15,17 +16,19 @@ import {
   Section,
   SearchBox,
   Skeleton,
+  SourceTag,
   Tag,
-  UserChip,
   useToast,
+  ExternalActor,
 } from "../../ui";
 import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import type { User } from "../../lib/types";
 import { userById } from "../../mocks/core";
-import { meetingById, meetings } from "../../mocks/planning";
+import { formatDateTime } from "../../lib/format";
+import { CAL_SOURCE, DOC_SOURCE, meetingById, meetingSync, meetings } from "../../mocks/planning";
 import type { Meeting } from "../../mocks/planning";
-import { LIST_STATES, listStateView, orgOf, projectOf } from "./shared";
+import { LIST_STATES, SourceBar, listStateView, orgOf, projectOf } from "./shared";
 
 export const J09_LIST_STATES = LIST_STATES;
 export const J09_DETAIL_STATES = ["既定", "読み込み中", "取得失敗"];
@@ -46,10 +49,14 @@ export function J09MeetingList({ params }: { params: Record<string, string> }) {
   const pr = projectOf(params);
   const [q, setQ] = useState("");
   const rows = meetings.filter((m) => !q || `${m.title}${m.body}`.includes(q));
-  const alt = listStateView(state, { icon: "message", emptyTitle: "議事録はまだありません", emptyDescription: "会議の決定事項を記録し、要求・変更・リスクに結び付けます。", emptyAction: <Button variant="primary" icon="plus">議事録を作成</Button> });
+  const alt = listStateView(state, { icon: "message", emptyTitle: "会議はまだありません", emptyDescription: "共有カレンダーの「顧客レビュー」を連携すると、会議と決定事項がここに表示されます。", emptyAction: <Button icon="plug" to={paths.connectors(org)}>連携を確認</Button> });
   return (
-    <ProjectLayout org={org} project={pr} active="meetings" trail={[{ label: "議事録" }]}>
-      <PageHeader title="議事録" description="決定事項を要求・変更要求・リスクに結び付けて記録します。" actions={<Button variant="primary" icon="plus">議事録を作成</Button>} />
+    <ProjectLayout org={org} project={pr} active="meetings" trail={[{ label: "会議・合意" }]}>
+      <PageHeader title="会議・合意" description="顧客・社内の会議と決定事項を、決定者・日時とともに確認します。決定事項は要求・変更要求・リスクに結び付きます。" />
+      <div className="stack" style={{ ["--gap" as string]: "8px" }}>
+        <SourceBar source={CAL_SOURCE} note="会議の日時・状態" />
+        <SourceBar source={DOC_SOURCE} note="議事メモ（docs/meetings/）" />
+      </div>
       {alt ?? (
         <>
           <SearchBox placeholder="題名や内容で絞り込み" value={q} onChange={setQ} width={320} />
@@ -59,8 +66,9 @@ export function J09MeetingList({ params }: { params: Record<string, string> }) {
             onRowClick={(m) => navigate(paths.meeting(org, pr, m.id))}
             empty={listStateView("0件（絞り込み）", { emptyTitle: "" })}
             columns={[
-              { key: "date", header: "日付", render: (m) => <span className="nowrap">{m.date}</span>, sortValue: (m) => m.date, hideable: false },
-              { key: "title", header: "題名", render: (m) => <span className="strong" style={{ fontWeight: 500 }}>{m.title}</span> },
+              { key: "date", header: "日時", render: (m) => <span className="nowrap">{meetingSync[m.id] ? formatDateTime(meetingSync[m.id].start) : m.date}</span>, sortValue: (m) => m.date, hideable: false },
+              { key: "title", header: "題名", render: (m) => <span className="row nowrap"><span className="strong" style={{ fontWeight: 500 }}>{m.title}</span>{meetingSync[m.id]?.status === "moved" ? <Tag tone="warn" square>日時変更あり</Tag> : null}</span> },
+              { key: "decider", header: "決定者", render: (m) => (meetingSync[m.id] ? <ExternalActor userId={meetingSync[m.id].decider} /> : "—") },
               { key: "participants", header: "参加者", render: (m) => <span className="row nowrap"><AvatarStack users={usersOf(m.participants)} /><span className="tiny muted">{m.participants.length}名</span></span> },
               { key: "decisions", header: "決定事項", align: "right", render: (m) => `${m.decisions.length}件`, sortValue: (m) => m.decisions.length },
             ]}
@@ -77,9 +85,10 @@ export function J09MeetingDetail({ params }: { params: Record<string, string> })
   const pr = projectOf(params);
   const toast = useToast();
   const m = meetingById(params.id);
+  const sync = meetingSync[m.id];
   return (
-    <ProjectLayout org={org} project={pr} active="meetings" trail={[{ label: "議事録", to: paths.meetings(org, pr) }, { label: m.title }]}>
-      <PageHeader id={m.id} title={m.title} description={m.date} actions={<><Button icon="edit">編集</Button><Button icon="plus" onClick={() => toast({ kind: "info", message: "決定事項から変更要求を起票します" })}>変更要求を起票</Button></>} />
+    <ProjectLayout org={org} project={pr} active="meetings" trail={[{ label: "会議・合意", to: paths.meetings(org, pr) }, { label: m.title }]}>
+      <PageHeader id={m.id} title={m.title} description={sync ? `${formatDateTime(sync.start)}〜${formatDateTime(sync.end).slice(-9)}` : m.date} actions={<Button icon="external" onClick={() => toast({ kind: "info", message: "議事メモを文書リポジトリで開きます" })}>正本で開く</Button>} />
       {state === "読み込み中" ? (
         <Skeleton variant="detail" />
       ) : state === "取得失敗" ? (
@@ -97,6 +106,7 @@ export function J09MeetingDetail({ params }: { params: Record<string, string> })
                         <span className="strong" style={{ fontWeight: 500 }}>{i + 1}. {d.text}</span>
                         <Tag tone="pass" icon="check">決定</Tag>
                       </div>
+                      {sync ? <span className="row tiny muted" style={{ ["--gap" as string]: "6px" }}>決定者: <ExternalActor userId={sync.decider} /> · {formatDateTime(sync.start)}</span> : null}
                       <div className="row" style={{ ["--gap" as string]: "8px" }}>
                         <span className="tiny muted">関連:</span>
                         {d.links.map((l) => <IdLink key={l} id={l} to={linkOf(org, pr, l)} />)}
@@ -110,10 +120,20 @@ export function J09MeetingDetail({ params }: { params: Record<string, string> })
           side={
             <>
               <MetaSection title="会議の情報">
-                <KeyValueList stacked items={[{ label: "日付", value: m.date }, { label: "記録者", value: <UserChip user={userById("u-sato")} /> }]} />
+                <KeyValueList
+                  stacked
+                  items={[
+                    { label: "日時", value: sync ? formatDateTime(sync.start) : m.date },
+                    { label: "状態", value: sync?.status === "moved" ? <Tag tone="warn" square>日時変更あり</Tag> : <Tag tone="pass" square>開催済み</Tag> },
+                    { label: "主催者", value: sync ? <ExternalActor userId={sync.organizer} /> : "—" },
+                    { label: "カレンダーの予定", value: <span className="mono small">{sync?.event_id ?? "—"}</span> },
+                    { label: "出典", value: <SourceTag source={CAL_SOURCE} compact /> },
+                  ]}
+                />
               </MetaSection>
               <MetaSection title={`参加者（${m.participants.length}）`}>
-                {usersOf(m.participants).map((u) => <UserChip key={u.id} user={u} />)}
+                {usersOf(m.participants).map((u) => <ExternalActor key={u.id} userId={u.id} />)}
+                <span className="tiny muted">参加者一覧は議事メモから取得しています（カレンダーの参加者一覧は取得しません）</span>
               </MetaSection>
             </>
           }

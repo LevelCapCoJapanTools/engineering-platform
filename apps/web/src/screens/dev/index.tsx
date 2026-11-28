@@ -31,6 +31,13 @@ const SAMPLE_IDS: Record<string, string> = {
   "X-02": "APR-499",
   "X-03": "rel-121",
   "P-09": "case-1",
+  "M-02": "DEC-0031",
+  "M-06": "BC-0007",
+  "M-11": "BEN-0001",
+  "K-03": "con-gh",
+  "N-02": "ch-slack-exec",
+  "N-07": "INC-0112",
+  "R-05": "REQ-0007",
 };
 
 export function openPath(s: ScreenDef) {

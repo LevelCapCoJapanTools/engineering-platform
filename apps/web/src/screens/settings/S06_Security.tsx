@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
 import { ORG } from "../../lib/paths";
-import { apiTokens } from "../../mocks/settings";
-import { Banner, Button, Combobox, ConfirmDialog, ErrorState, FileUpload, Icon, Modal, Section, Select, SettingsLayout, Skeleton, Tag, TextArea, TextField, Timestamp, Toggle, useToast } from "../../ui";
+import { apiTokens, deprovisionTargets, securityAudit } from "../../mocks/settings";
+import { userById } from "../../mocks/core";
+import { ProviderBadge, Banner, Button, Combobox, ConfirmDialog, ErrorState, FileUpload, Icon, Modal, Section, Select, SettingsLayout, Skeleton, Tag, TextArea, TextField, Timestamp, Toggle, useToast } from "../../ui";
 
 export function S06Security({ org = ORG }: { org?: string }) {
   const state = useScreenState();
@@ -14,9 +15,10 @@ export function S06Security({ org = ORG }: { org?: string }) {
   const [created, setCreated] = useState<string | null>(null);
   const [tokenName, setTokenName] = useState("");
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [mfaRequired, setMfaRequired] = useState(state !== "MFA任意");
 
   return (
-    <SettingsLayout org={org} active="security" title="セキュリティ" description="サインイン方法、セッション、API トークンを管理します。">
+    <SettingsLayout org={org} active="security" title="セキュリティ" description="サインイン方法、MFA、セッション、利用者の無効化の反映、API トークンを管理します。変更はすべて監査ログに残ります。">
       {state === "読み込み中" ? (
         <Skeleton variant="detail" />
       ) : state === "エラー" ? (
@@ -43,10 +45,41 @@ export function S06Security({ org = ORG }: { org?: string }) {
             </div>
           </Section>
 
+          <Section title="多要素認証（MFA）" sub="経営判断や広い閲覧範囲を持つ利用者を守るため、MFA を必須にすることをおすすめします" actions={mfaRequired ? <Tag tone="pass" icon="shieldCheck">必須</Tag> : <Tag tone="warn" icon="alert">任意</Tag>}>
+            <div className="stack">
+              <Toggle label="すべての利用者に MFA を必須にする" description="SSO の利用者は IdP 側の MFA を要件にします。パスワードの利用者は認証アプリまたはセキュリティキーを登録します" checked={mfaRequired} onChange={(v) => { setMfaRequired(v); toast({ kind: "success", message: v ? "MFA を必須にしました" : "MFA を任意にしました" }); }} />
+              {!mfaRequired ? <Banner tone="warn">MFA が任意になっています。1名の利用者が MFA を設定していません。</Banner> : null}
+              <div className="grid cols-2">
+                <Select label="使える要素" defaultValue="app-key" options={[{ value: "app-key", label: "認証アプリ・セキュリティキー" }, { value: "key", label: "セキュリティキーのみ" }]} help="SMS は使いません" />
+                <Select label="IdP に求める条件" defaultValue="mfa" options={[{ value: "mfa", label: "IdP の MFA を必須（AuthnContext で確認）" }, { value: "none", label: "IdP の設定に任せる" }]} />
+              </div>
+            </div>
+          </Section>
+
           <Section title="セッション">
             <div className="grid cols-2">
               <Select label="セッションの有効期間" defaultValue="12h" options={[{ value: "1h", label: "1時間" }, { value: "12h", label: "12時間" }, { value: "24h", label: "24時間" }, { value: "7d", label: "7日間" }]} help="期間が過ぎると再サインインが必要です" />
               <Select label="操作がない場合のタイムアウト" defaultValue="60" options={[{ value: "30", label: "30分" }, { value: "60", label: "60分" }, { value: "240", label: "4時間" }]} />
+            </div>
+          </Section>
+
+          <Section title="利用者の無効化の反映先" sub="退職・異動で利用者や外部アクターを無効にしたとき、連携先・承認・通知・当番に反映します">
+            <div className="stack">
+              <div className="table-wrap">
+                <table className="table compact">
+                  <thead><tr><th>反映先</th><th>方法</th></tr></thead>
+                  <tbody>
+                    {deprovisionTargets.map((d) => (
+                      <tr key={d.name}>
+                        <td><span className="row nowrap" style={{ ["--gap" as string]: "8px" }}><ProviderBadge provider={d.provider} size="sm" /><span className="small muted">{d.name}</span></span></td>
+                        <td>{d.state === "手動確認が必要" ? <Tag tone="warn" square>{d.state}</Tag> : <Tag square>{d.state}</Tag>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Toggle label="IdP で無効化された利用者を自動で無効にする（SCIM）" description="IdP からの通知を受けて、このサービスと連携先の権限を同時に止めます" checked={ssoConfigured} disabled={!ssoConfigured} onChange={() => undefined} />
+              <p className="tiny muted">反映の状況は人ごとに「外部アクターの対応付け」で確認できます。過去の承認記録と監査ログは消えません。</p>
             </div>
           </Section>
 
@@ -63,6 +96,24 @@ export function S06Security({ org = ORG }: { org?: string }) {
                       <td><Timestamp at={t.last_used_at} /></td>
                       <td>{t.revoked ? <Tag tone="fail">失効済み</Tag> : <Tag tone="pass">有効</Tag>}</td>
                       <td style={{ textAlign: "right" }}>{t.revoked ? null : <Button size="sm" variant="ghost" icon="x" onClick={() => setRevoking(t.name)}>失効</Button>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+
+          <Section title="セキュリティ操作の記録" sub="トークンの発行・失効、MFA や SSO の変更、利用者の無効化を記録します" flush>
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead><tr><th>日時</th><th>操作者</th><th>操作</th><th>対象</th></tr></thead>
+                <tbody>
+                  {securityAudit.map((a) => (
+                    <tr key={a.at}>
+                      <td><Timestamp at={a.at} mode="absolute" /></td>
+                      <td className="small">{userById(a.actor)?.name}</td>
+                      <td className="small strong">{a.action}</td>
+                      <td className="small">{a.target}</td>
                     </tr>
                   ))}
                 </tbody>

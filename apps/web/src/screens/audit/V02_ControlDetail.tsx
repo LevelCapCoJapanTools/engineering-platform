@@ -1,10 +1,12 @@
 // 画面ID: V-02 統制項目の詳細
+import "./audit.css";
 import { useScreenState } from "../../lib/router";
 import { ORG, PROJECT, paths } from "../../lib/paths";
-import { CONTROL_STATUS, ENFORCEMENT_LEVEL } from "../../lib/vocab";
+import { CONTROL_STATUS, ENFORCEMENT_LEVEL, EVIDENCE_STATUS } from "../../lib/vocab";
 import type { ControlStatus } from "../../lib/vocab";
 import { controlById, evidence, exceptions } from "../../mocks/core";
-import { controlEvidence, controlTailoring } from "../../mocks/audit";
+import { chainFor, controlEvidence, controlTailoring, controlVerifyFailed } from "../../mocks/audit";
+import { controlSources } from "../../mocks/policy";
 import { rules } from "../../mocks/policy";
 import { formatDate } from "../../lib/format";
 import {
@@ -17,6 +19,8 @@ import {
   EnforcementBadge,
   EvidenceItem,
   ExceptionSummary,
+  ExternalActor,
+  SourceTag,
   Icon,
   IdLink,
   KeyValueList,
@@ -33,7 +37,10 @@ import {
 export function ControlDetail({ org = ORG, project = PROJECT, id }: { org?: string; project?: string; id: string }) {
   const state = useScreenState();
   const control = controlById(id);
-  const status: ControlStatus = state === "default" ? control.status : (state as ControlStatus);
+  const verifyFailed = state === "verifyFailed" || (state === "default" && Boolean(controlVerifyFailed[control.id]));
+  const status: ControlStatus = state === "default" || state === "verifyFailed" ? control.status : (state as ControlStatus);
+  const chain = chainFor(control);
+  const src = controlSources[control.id];
   const evIds = controlEvidence[control.id] ?? [];
   let evs = evidence.filter((e) => evIds.includes(e.id));
   if (status === "missing") evs = evidence.filter((e) => e.missing);
@@ -48,7 +55,7 @@ export function ControlDetail({ org = ORG, project = PROJECT, id }: { org?: stri
       <PageHeader
         id={control.id}
         title={control.description}
-        status={CONTROL_STATUS[status]}
+        status={verifyFailed ? EVIDENCE_STATUS.verifyFailed : CONTROL_STATUS[status]}
         meta={
           <>
             <ControlLayerTag layer={control.layer} />
@@ -58,7 +65,11 @@ export function ControlDetail({ org = ORG, project = PROJECT, id }: { org?: stri
         }
         actions={<Button icon="package" to={paths.auditExport(org, project)}>監査パックに含めて出力</Button>}
       />
-      {status === "missing" ? (
+      {verifyFailed ? (
+        <Banner tone="fail" title="証跡の検証に失敗しています">
+          {controlVerifyFailed[control.id] ?? "紐づく Evidence Manifest の署名検証に失敗しています。"}検証に失敗した証跡は充足として扱いません。
+        </Banner>
+      ) : status === "missing" ? (
         <Banner tone="fail" title="必要な証跡が欠落しています">
           この統制項目に必要な証跡（{control.evidence_types.join("、")}）がまだ取得されていません。担当者に依頼してください。
         </Banner>
@@ -70,6 +81,66 @@ export function ControlDetail({ org = ORG, project = PROJECT, id }: { org?: stri
       <DetailLayout
         main={
           <>
+            <Section title="規格から証跡までの連鎖" sub="統制項目 → プロセス領域 → 組織の手順 → 成果物 → 機械ルール・人の判断 → Evidence Manifest">
+              <ol className="audit-chain">
+                <li>
+                  <span className="audit-chain-step">統制項目</span>
+                  <div className="stack" style={{ ["--gap" as string]: "2px" }}>
+                    <span className="mono strong small">{control.id}</span>
+                    <span className="small muted">{src ? `${src.doc} ${src.clause}（番号の参照のみ）・${src.profile}` : control.source_ref}</span>
+                  </div>
+                </li>
+                <li>
+                  <span className="audit-chain-step">プロセス領域</span>
+                  <span className="small">{control.process === "PM" ? "PM: プロジェクト管理" : "SI: ソフトウェア実装"} · {control.activity}</span>
+                </li>
+                <li>
+                  <span className="audit-chain-step">組織の手順</span>
+                  <span className="small">{chain.procedure}<span className="muted">（{chain.procedure_ref}）</span></span>
+                </li>
+                <li>
+                  <span className="audit-chain-step">成果物</span>
+                  <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+                    {chain.artifacts.map((a) => (
+                      <div key={a.name} className="row" style={{ ["--gap" as string]: "8px" }}>
+                        <span className="small strong">{a.name}</span>
+                        {a.ref !== "—" ? <IdLink id={a.ref} /> : null}
+                        <SourceTag source={a.source} compact />
+                      </div>
+                    ))}
+                  </div>
+                </li>
+                <li>
+                  <span className="audit-chain-step">判断</span>
+                  <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+                    <span className="row" style={{ ["--gap" as string]: "6px" }}>
+                      <ActorLabel kind="ci" name="機械ルール" size="sm" />
+                      {chain.machine.length ? chain.machine.map((r) => <span key={r} className="mono small">{r}</span>) : <span className="small muted">なし</span>}
+                    </span>
+                    {chain.human.length ? (
+                      chain.human.map((h) => (
+                        <span key={h.role} className="row" style={{ ["--gap" as string]: "6px" }}>
+                          <ActorLabel kind="human" name={h.role} size="sm" />
+                          {h.user_id ? <ExternalActor userId={h.user_id} role={h.role} /> : null}
+                          <span className="tiny muted">{h.note}</span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="small muted">人の判断は不要</span>
+                    )}
+                  </div>
+                </li>
+                <li>
+                  <span className="audit-chain-step">Manifest</span>
+                  {chain.manifests.length ? (
+                    <span className="row" style={{ ["--gap" as string]: "6px" }}>{chain.manifests.map((m) => <IdLink key={m} id={m} to={paths.manifest(org, project, m)} />)}</span>
+                  ) : (
+                    <span className="small text-fail">まだ Manifest に含まれていません</span>
+                  )}
+                </li>
+              </ol>
+            </Section>
+
             <Section title="根拠の参照" sub="規格の番号と箇条番号のみを表示します。規格の本文は表示しません。">
               <div className="stack" style={{ ["--gap" as string]: "10px" }}>
                 <div className="row">

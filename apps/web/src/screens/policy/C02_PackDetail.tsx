@@ -4,7 +4,7 @@ import { navigate, useScreenState } from "../../lib/router";
 import { ORG, paths } from "../../lib/paths";
 import type { Control } from "../../lib/types";
 import { controls, projects } from "../../mocks/core";
-import { evidenceTypes, packBySlug, rules } from "../../mocks/policy";
+import { controlSources, evidenceTypes, packBySlug, rules } from "../../mocks/policy";
 import type { AutoRule } from "../../mocks/policy";
 import { formatDate } from "../../lib/format";
 import {
@@ -38,12 +38,28 @@ export function PackDetail({ org = ORG, pack: slug }: { org?: string; pack: stri
 
   const controlCols: Column<Control>[] = [
     { key: "id", header: "CTL-ID", render: (c) => <span className="id-link">{c.id}</span>, sortValue: (c) => c.id, hideable: false },
-    { key: "desc", header: "説明（自社）", render: (c) => c.description },
+    { key: "desc", header: "説明（自社作成）", render: (c) => c.description },
+    {
+      key: "source",
+      header: "出典（番号のみ）",
+      render: (c) => {
+        const src = controlSources[c.id];
+        return src ? <div className="stack" style={{ ["--gap" as string]: "2px" }}><span className="mono tiny">{src.doc}</span><span className="tiny muted">{src.clause} · {src.profile}</span></div> : <span className="muted small">—</span>;
+      },
+    },
     { key: "layer", header: "層", render: (c) => <ControlLayerTag layer={c.layer} />, sortValue: (c) => c.layer },
     { key: "proc", header: "プロセス・活動", render: (c) => <span className="small">{c.process} · {c.activity}</span>, sortValue: (c) => c.process + c.activity },
     { key: "ev", header: "必要な証跡", render: (c) => <span className="row" style={{ ["--gap" as string]: "4px" }}>{c.evidence_types.map((t) => <Tag key={t} square>{t}</Tag>)}</span> },
     { key: "machine", header: "機械検証", render: (c) => (c.machine_rule_ids.length ? <ActorLabel kind="ci" name={c.machine_rule_ids.join(", ")} size="sm" /> : <span className="muted small">なし</span>) },
     { key: "human", header: "人間承認", render: (c) => (c.human_role ? <RoleBadge role={c.human_role} /> : <span className="muted small">不要</span>) },
+    {
+      key: "review",
+      header: "レビュー",
+      render: (c) => {
+        const r = controlSources[c.id]?.reviewed ?? "—";
+        return <Tag tone={r.startsWith("レビュー済み") || r === "社内承認" ? "pass" : r.startsWith("差戻し") ? "fail" : "warn"} square>{r}</Tag>;
+      },
+    },
   ];
   const ruleCols: Column<AutoRule>[] = [
     { key: "id", header: "ルールID", render: (r) => <span className="mono strong small">{r.id}</span>, sortValue: (r) => r.id, hideable: false },
@@ -60,6 +76,9 @@ export function PackDetail({ org = ORG, pack: slug }: { org?: string; pack: stri
         meta={<><PolicyVersionTag pack="バージョン" version={pack.version} outdated={pack.latest !== pack.version} /><Tag square>{pack.profile}</Tag><span className="small muted">公開 {formatDate(pack.published_at)}</span></>}
         actions={
           <>
+            <Button icon="target" to={paths.packScope(org, pack.slug)}>適用範囲</Button>
+            <Button icon="book" to={paths.packSources(org, pack.slug)}>出典と利用許諾</Button>
+            <Button icon="history" to={paths.packReviews(org, pack.slug)}>レビュー記録</Button>
             <Button icon="compare" to={paths.policyDiff(org, pack.slug)}>バージョン比較</Button>
             <Button variant="primary" icon="edit" to={paths.tailoring(org, pack.slug)}>組織での調整</Button>
           </>
@@ -78,7 +97,8 @@ export function PackDetail({ org = ORG, pack: slug }: { org?: string; pack: stri
         }
       />
       <Banner tone="info" title="この画面は閲覧のみです">
-        Control Pack は製品側で提供します。統制項目を適用しない、別の証跡で代替する、強制レベルを変えるといった変更は「組織での調整（C-03）」から申請してください。規格の本文は含まれていません。
+        Control Pack は製品側で提供します。統制項目を適用しない、別の証跡で代替する、強制レベルを変えるといった変更は「組織での調整（C-03）」から申請してください。
+        規格の本文は含まれていません。説明は自社で作成したもので、出典は規格の番号と箇条番号だけを示します。統制項目は「規範・ガイド・組織調整・自動ルール」の4層に分け、ガイドの例示を規格の要求として扱いません。
       </Banner>
       {state === "loading" ? (
         <Skeleton rows={6} />

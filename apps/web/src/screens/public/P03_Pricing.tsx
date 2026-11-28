@@ -14,7 +14,7 @@ export function P03Pricing() {
         <div className="container stack" style={{ ["--gap" as string]: "14px", alignItems: "center", textAlign: "center" }}>
           <span className="eyebrow">PRICING</span>
           <h1 className="display" style={{ fontSize: "clamp(28px, 4vw, 40px)" }}>料金</h1>
-          <p className="lead">チームの規模と扱うデータに合わせて選べます。価格は税抜です（掲載価格は仮のものです）。</p>
+          <p className="lead">経営層のシートとプロジェクト数で選べます。開発者・PM・QA・顧客の分は料金がかかりません。価格は税抜です（掲載価格は仮のものです）。</p>
           <Segmented value={cycle} onChange={(v) => setCycle(v as "monthly" | "yearly")} options={[{ value: "monthly", label: "月額" }, { value: "yearly", label: "年額（約17%お得）" }]} />
         </div>
       </section>

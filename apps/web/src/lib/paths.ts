@@ -28,6 +28,9 @@ export const paths = {
   onboardingMembers: () => "/onboarding/members",
   onboardingAi: () => "/onboarding/ai",
   onboardingDone: () => "/onboarding/done",
+  onboardingPlanning: () => "/onboarding/planning",
+  onboardingNotify: () => "/onboarding/notify",
+  onboardingScope: () => "/onboarding/scope",
 
   // 組織
   orgHome: (org: string) => o(org),
@@ -36,6 +39,40 @@ export const paths = {
   projects: (org: string) => `${o(org)}/projects`,
   projectNew: (org: string) => `${o(org)}/projects/new`,
   search: (org: string) => `${o(org)}/search`,
+
+  // 経営（2026-11-28 追加。直接利用者は経営層）
+  portfolio: (org: string) => `${o(org)}/portfolio`,
+  decisions: (org: string) => `${o(org)}/decisions`,
+  decision: (org: string, id: string) => `${o(org)}/decisions/${id}`,
+  intake: (org: string) => `${o(org)}/intake`,
+  intakeNew: (org: string) => `${o(org)}/intake-new`,
+  businessCase: (org: string, id: string) => `${o(org)}/intake/${id}`,
+  priorities: (org: string) => `${o(org)}/priorities`,
+  capacity: (org: string) => `${o(org)}/capacity`,
+  roadmap: (org: string) => `${o(org)}/roadmap`,
+  benefits: (org: string) => `${o(org)}/benefits`,
+  benefit: (org: string, id: string) => `${o(org)}/benefits/${id}`,
+  execSchedule: (org: string) => `${o(org)}/schedule`,
+
+  // 連携と同期
+  connectors: (org: string) => `${o(org)}/connectors`,
+  connectorNew: (org: string) => `${o(org)}/connectors-new`,
+  connector: (org: string, id: string) => `${o(org)}/connectors/${id}`,
+  capabilities: (org: string) => `${o(org)}/connector-capabilities`,
+  mapping: (org: string) => `${o(org)}/connector-mapping`,
+  sources: (org: string) => `${o(org)}/connector-sources`,
+  deliveries: (org: string) => `${o(org)}/connector-events`,
+  importDiag: (org: string) => `${o(org)}/connector-import`,
+
+  // 通知とオンコール
+  channels: (org: string) => `${o(org)}/notify/channels`,
+  channel: (org: string, id: string) => `${o(org)}/notify/channels/${id}`,
+  notifyRules: (org: string) => `${o(org)}/notify/rules`,
+  notifyLog: (org: string) => `${o(org)}/notify/deliveries`,
+  oncall: (org: string) => `${o(org)}/oncall`,
+  escalation: (org: string) => `${o(org)}/oncall/escalation`,
+  incidents: (org: string) => `${o(org)}/incidents`,
+  incident: (org: string, id: string) => `${o(org)}/incidents/${id}`,
 
   // プロジェクト: 計画と管理
   project: (org: string, pr: string) => p(org, pr),
@@ -49,6 +86,10 @@ export const paths = {
   change: (org: string, pr: string, id: string) => `${p(org, pr)}/changes/${id}`,
   meetings: (org: string, pr: string) => `${p(org, pr)}/meetings`,
   meeting: (org: string, pr: string, id: string) => `${p(org, pr)}/meetings/${id}`,
+  schedule: (org: string, pr: string) => `${p(org, pr)}/schedule`,
+  milestones: (org: string, pr: string) => `${p(org, pr)}/milestones`,
+  closure: (org: string, pr: string) => `${p(org, pr)}/closure`,
+  documents: (org: string, pr: string) => `${p(org, pr)}/documents`,
 
   // 要求・設計・トレーサビリティ
   requirements: (org: string, pr: string) => `${p(org, pr)}/requirements`,
@@ -60,6 +101,10 @@ export const paths = {
   trace: (org: string, pr: string) => `${p(org, pr)}/trace`,
   traceMatrix: (org: string, pr: string) => `${p(org, pr)}/trace-matrix`,
   verification: (org: string, pr: string) => `${p(org, pr)}/verification`,
+  requirementDiff: (org: string, pr: string, id: string) => `${p(org, pr)}/requirements/${id}/diff`,
+  defects: (org: string, pr: string) => `${p(org, pr)}/defects`,
+  scans: (org: string, pr: string) => `${p(org, pr)}/scans`,
+  builds: (org: string, pr: string) => `${p(org, pr)}/builds`,
 
   // ゲート・PR・例外
   gates: (org: string, pr: string) => `${p(org, pr)}/gates`,
@@ -68,11 +113,15 @@ export const paths = {
   exceptions: (org: string, pr: string) => `${p(org, pr)}/exceptions`,
   exceptionNew: (org: string, pr: string) => `${p(org, pr)}/exceptions-new`,
   exception: (org: string, pr: string, id: string) => `${p(org, pr)}/exceptions/${id}`,
+  gateSettings: (org: string, pr: string) => `${p(org, pr)}/gate-settings`,
+  gateRegistration: (org: string, pr: string) => `${p(org, pr)}/gate-registration`,
+  gateReplay: (org: string, pr: string, run: string) => `${p(org, pr)}/gates/${run}/replay`,
 
   // リリースと受入
   releases: (org: string, pr: string) => `${p(org, pr)}/releases`,
   release: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}`,
   acceptance: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/acceptance`,
+  baselines: (org: string, pr: string) => `${p(org, pr)}/baselines`,
 
   // 証跡と監査
   audit: (org: string, pr: string) => `${p(org, pr)}/audit`,
@@ -81,6 +130,7 @@ export const paths = {
   manifest: (org: string, pr: string, id: string) => `${p(org, pr)}/evidence/${id}`,
   auditLog: (org: string, pr: string) => `${p(org, pr)}/audit-log`,
   auditExport: (org: string, pr: string) => `${p(org, pr)}/audit-export`,
+  shares: (org: string, pr: string) => `${p(org, pr)}/shares`,
 
   // ポリシー
   policies: (org: string) => `${o(org)}/policies`,
@@ -88,6 +138,9 @@ export const paths = {
   tailoring: (org: string, pack: string) => `${o(org)}/policies/${pack}/tailoring`,
   policyDiff: (org: string, pack: string) => `${o(org)}/policies/${pack}/diff`,
   migration: (org: string, pack: string, id: string) => `${o(org)}/policies/${pack}/migrations/${id}`,
+  packScope: (org: string, pack: string) => `${o(org)}/policies/${pack}/scope`,
+  packSources: (org: string, pack: string) => `${o(org)}/policies/${pack}/sources`,
+  packReviews: (org: string, pack: string) => `${o(org)}/policies/${pack}/reviews`,
 
   // 設定
   settings: (org: string) => `${o(org)}/settings`,
@@ -97,6 +150,11 @@ export const paths = {
   evidenceSettings: (org: string) => `${o(org)}/settings/evidence`,
   security_: (org: string) => `${o(org)}/settings/security`,
   billing: (org: string) => `${o(org)}/settings/billing`,
+  actors: (org: string) => `${o(org)}/settings/actors`,
+  scopes: (org: string) => `${o(org)}/settings/scopes`,
+  aiEval: (org: string) => `${o(org)}/settings/ai-eval`,
+  usage: (org: string) => `${o(org)}/settings/usage`,
+  signing: (org: string) => `${o(org)}/settings/signing`,
   me: () => "/me",
 
   // 外部利用者
@@ -106,6 +164,7 @@ export const paths = {
   portalChangeNew: (pr: string) => `/portal/${pr}/changes-new`,
   review: (token: string) => `/review/${token}`,
   partner: () => "/partner",
+  approvalLink: (token: string) => `/approve/${token}`,
 
   // 共通の状態画面
   notFound: () => "/404",
@@ -113,10 +172,13 @@ export const paths = {
   error: () => "/500",
   maintenance: () => "/maintenance",
   sessionExpired: () => "/session-expired",
+  status: () => "/status",
+  support: () => "/support",
 
   // Web以外の表示面
   checkRun: () => "/surfaces/github-check",
   emails: () => "/surfaces/email",
+  chatCards: () => "/surfaces/chat",
 
   // 開発用
   screens: () => "/screens",

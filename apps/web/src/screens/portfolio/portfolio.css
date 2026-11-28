@@ -1,0 +1,45 @@
+/* 「経営: 投資と配分」画面群（pf- 接頭辞） */
+.pf-dots { display: inline-flex; gap: 3px; vertical-align: middle; }
+.pf-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tone-neutral-bg); border: 1px solid var(--border); }
+.pf-dots.tone-pass .pf-dot.on { background: var(--tone-pass); border-color: var(--tone-pass); }
+.pf-dots.tone-info .pf-dot.on { background: var(--tone-info); border-color: var(--tone-info); }
+.pf-dots.tone-neutral .pf-dot.on { background: var(--muted); border-color: var(--muted); }
+.pf-dots.tone-warn .pf-dot.on { background: var(--tone-warn); border-color: var(--tone-warn); }
+.pf-dots.tone-fail .pf-dot.on { background: var(--tone-fail); border-color: var(--tone-fail); }
+.pf-minibar { position: relative; display: block; height: 8px; min-width: 60px; border-radius: 4px; background: var(--tone-neutral-bg); overflow: visible; }
+.pf-minibar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--tone-info); }
+.pf-minibar-fill.tone-pass { background: var(--tone-pass); }
+.pf-minibar-fill.tone-warn { background: var(--tone-warn); }
+.pf-minibar-fill.tone-fail { background: var(--tone-fail); }
+.pf-minibar-marker { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+.pf-spark { display: block; max-width: 100%; }
+.pf-spark-line { fill: none; stroke: var(--primary); stroke-width: 2; }
+.pf-spark-dot { fill: var(--primary); }
+.pf-spark-target { stroke: var(--tone-pass); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.pf-rolenote { margin: 0; }
+.pf-cap-cell { display: grid; gap: 4px; min-width: 88px; }
+.pf-cap-cell .tiny { white-space: nowrap; }
+.pf-option { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); display: grid; gap: 6px; }
+.pf-option.recommended { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+.pf-option-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+.pf-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.pf-cal-head { padding: 6px; font-size: var(--text-xs); color: var(--muted); text-align: center; border-bottom: 1px solid var(--border); background: var(--tone-neutral-bg); }
+.pf-cal-day { min-height: 96px; padding: 4px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; align-content: start; gap: 3px; min-width: 0; }
+.pf-cal-day:nth-child(7n) { border-right: 0; }
+.pf-cal-day.out { background: var(--tone-neutral-bg); opacity: .6; }
+.pf-cal-day.today { box-shadow: inset 0 0 0 2px var(--primary); }
+.pf-cal-num { font-size: var(--text-xs); color: var(--muted); }
+.pf-cal-item { display: block; font-size: 11px; line-height: 1.3; padding: 2px 4px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 3px solid var(--tone-info); background: var(--tone-info-bg); color: var(--text); }
+.pf-cal-item.milestone { border-left-color: var(--text); background: var(--tone-neutral-bg); }
+.pf-cal-item.forecast { border-left-color: var(--tone-warn); background: var(--tone-warn-bg); }
+.pf-cal-item.decision { border-left-color: var(--tone-warn); background: var(--tone-warn-bg); font-weight: 600; }
+.pf-cal-item.meeting { border-left-color: var(--tone-special); background: var(--tone-special-bg); }
+.pf-cal-item.cancelled { text-decoration: line-through; opacity: .7; }
+.pf-cal-wrap { overflow-x: auto; }
+.pf-cal-wrap .pf-cal { min-width: 640px; }
+.pf-weight { display: grid; grid-template-columns: 90px 1fr 24px; align-items: center; gap: 8px; }
+.pf-weight input[type="range"] { width: 100%; }
+.pf-kpi { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; }
+@media (max-width: 640px) {
+  .pf-kpi { grid-template-columns: minmax(0, 1fr); }
+}

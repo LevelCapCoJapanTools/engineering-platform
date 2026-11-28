@@ -9,6 +9,8 @@ import { P06Contact } from "./P06_Contact";
 import { P07Terms } from "./P07_Terms";
 import { P08Privacy } from "./P08_Privacy";
 import { P09CaseDetail, P09Cases } from "./P09_Cases";
+import { P10Status } from "./P10_Status";
+import { P11Support } from "./P11_Support";
 
 const group = "6.1 公開サイト";
 
@@ -22,5 +24,7 @@ export const publicScreens: ScreenDef[] = [
   { id: "P-07", title: "利用規約", path: paths.terms(), group, priority: "Must", render: () => <P07Terms /> },
   { id: "P-08", title: "プライバシーポリシー", path: paths.privacy(), group, priority: "Must", render: () => <P08Privacy /> },
   { id: "P-09", title: "導入事例", path: paths.cases(), group, priority: "Later", states: ["一覧", "空"], render: () => <P09Cases /> },
+  { id: "P-10", title: "稼働状況", path: paths.status(), group, priority: "Should", states: ["正常", "障害発生中", "保守予定"], render: () => <P10Status /> },
+  { id: "P-11", title: "サポート・脆弱性報告", path: paths.support(), group, priority: "Should", states: ["問い合わせ", "脆弱性の報告", "送信完了"], render: () => <P11Support /> },
   { id: "P-09D", title: "導入事例の詳細", path: paths.caseDetail(":id"), group, priority: "Later", render: (p) => <P09CaseDetail id={p.id} /> },
 ];

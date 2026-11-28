@@ -25,7 +25,7 @@ export function S01OrgSettings({ org = ORG }: { org?: string }) {
   };
 
   return (
-    <SettingsLayout org={org} active="org" title="組織の設定" description="組織の基本情報を管理します。変更は組織管理者のみが行えます。">
+    <SettingsLayout org={org} active="org" title="組織の設定" description="組織の基本情報と表示形式を管理します。変更は組織管理者のみが行えます。変更は監査ログに記録されます。">
       {state === "読み込み中" ? (
         <Skeleton variant="detail" />
       ) : state === "エラー" ? (
@@ -33,9 +33,9 @@ export function S01OrgSettings({ org = ORG }: { org?: string }) {
       ) : (
         <>
           {readOnly ? (
-            <SoDNotice reason="組織の設定を変更できるのは組織管理者のみです。あなたのロール（PM、リリース管理者）では閲覧のみできます。" eligible={membersWithRole("組織管理者")} />
+            <SoDNotice reason="組織の設定を変更できるのは組織管理者のみです。あなたのロール（経営者、案件スポンサー）では閲覧のみできます。" eligible={membersWithRole("組織管理者")} />
           ) : null}
-          <Section title="基本情報" sub="組織名と表示IDはメンバーと顧客ポータルに表示されます">
+          <Section title="基本情報と表示形式" sub="組織名と表示IDは利用者と顧客ポータルに表示されます">
             <div className="stack">
               <div className="grid cols-2">
                 <TextField label="組織名" required value={name} onChange={setName} error={nameError} readOnly={readOnly} maxLength={60} />
@@ -44,7 +44,15 @@ export function S01OrgSettings({ org = ORG }: { org?: string }) {
               <FileUpload label="ロゴ" accept=".png,.svg（正方形、512px 以上推奨）" fileName="sample-soft-logo.png" />
               <div className="grid cols-2">
                 <Select label="タイムゾーン" defaultValue={orgSettings.timezone} disabled={readOnly} options={[{ value: "Asia/Tokyo", label: "(UTC+09:00) 東京" }, { value: "UTC", label: "(UTC+00:00) 協定世界時" }, { value: "America/Los_Angeles", label: "(UTC-08:00) ロサンゼルス" }]} help="期限や監査ログの表示に使います。記録は UTC で保存します" />
-                <Select label="言語" defaultValue={orgSettings.language} disabled={readOnly} options={[{ value: "ja", label: "日本語" }, { value: "en", label: "English（準備中）", disabled: true }]} />
+                <Select label="既定の言語" defaultValue={orgSettings.language} disabled={readOnly} options={[{ value: "ja", label: "日本語（標準）" }, { value: "en", label: "English" }]} help="利用者ごとに個人設定で切り替えられます。監査パックと通知の言語にも使います" />
+              </div>
+              <div className="grid cols-2">
+                <Select label="日付の表示形式" defaultValue={orgSettings.dateFormat} disabled={readOnly} options={[{ value: "yyyy/MM/dd", label: "2026/11/27" }, { value: "yyyy-MM-dd", label: "2026-11-27（ISO 8601）" }, { value: "MMM d, yyyy", label: "Nov 27, 2026" }]} />
+                <Select label="氏名の表示順" defaultValue={orgSettings.nameDisplay} disabled={readOnly} options={[{ value: "familyFirst", label: "姓 名（佐藤 美咲）" }, { value: "givenFirst", label: "名 姓（Misaki Sato）" }]} />
+                <Select label="週の始まり" defaultValue={orgSettings.weekStart} disabled={readOnly} options={[{ value: "monday", label: "月曜日" }, { value: "sunday", label: "日曜日" }]} help="スケジュールとロードマップの表示に使います" />
+                <Select label="年度の開始月" defaultValue={orgSettings.fiscalYearStart} disabled={readOnly} options={[{ value: "04", label: "4月" }, { value: "01", label: "1月" }, { value: "10", label: "10月" }]} help="予算と便益の集計期間に使います" />
+                <Select label="営業日カレンダー" defaultValue={orgSettings.holidays} disabled={readOnly} options={[{ value: "jp", label: "日本の祝日＋年末年始（12/29〜1/3）" }, { value: "jp-only", label: "日本の祝日のみ" }, { value: "none", label: "土日のみ休日" }]} help="遅延日数・営業日の計算に使います" />
+                <Select label="通貨" defaultValue={orgSettings.currency} disabled options={[{ value: "JPY", label: "日本円（JPY）" }]} help="予算・費用の表示に使います" />
               </div>
               <div className="row end">
                 <Button variant="primary" icon="check" loading={saving} disabled={readOnly || Boolean(nameError) || Boolean(slugError)} disabledReason={readOnly ? "組織管理者のみ変更できます" : "入力内容を確認してください"} onClick={save}>
@@ -66,7 +74,7 @@ export function S01OrgSettings({ org = ORG }: { org?: string }) {
               <div className="row between">
                 <div className="stack" style={{ ["--gap" as string]: "2px" }}>
                   <span className="strong">組織の削除</span>
-                  <span className="small muted">4件のプロジェクトと 9 名のメンバーが影響を受けます</span>
+                  <span className="small muted">4件のプロジェクト、4 名の利用者、11 件の連携が影響を受けます。連携先から取り込んだ複製データも削除します</span>
                 </div>
                 <Button variant="danger" icon="trash" disabled={readOnly} disabledReason="組織管理者のみ削除できます" onClick={() => setConfirm(true)}>
                   組織を削除

@@ -10,8 +10,9 @@ import { Link, navigate, setScreenState, useRoute } from "../lib/router";
 import { ORG, PROJECT, paths } from "../lib/paths";
 import { COMPLIANCE_PHRASE, PRODUCT_NAME } from "../lib/vocab";
 import type { StatusVocab } from "../lib/vocab";
-import { approvalRequests, currentUser, notifications, orgs, projectBySlug, projects } from "../mocks/core";
+import { currentUser, notifications, orgs, projectBySlug, projects } from "../mocks/core";
 import { relativeTime } from "../lib/format";
+import { connectors, decisions, incidents } from "../mocks/portfolio";
 
 // ---------- テーマ ----------
 type Theme = "light" | "dark";
@@ -130,6 +131,8 @@ export function PublicFooter() {
           <div className="stack" style={{ ["--gap" as string]: "8px" }}>
             <strong>会社</strong>
             <Link to={paths.contact()}>お問い合わせ</Link>
+            <Link to={paths.support()}>サポート・脆弱性報告</Link>
+            <Link to={paths.status()}>稼働状況</Link>
             <Link to={paths.terms()}>利用規約</Link>
             <Link to={paths.privacy()}>プライバシーポリシー</Link>
           </div>
@@ -170,7 +173,8 @@ export function CenterLayout({ children, wide }: { children: ReactNode; wide?: b
   );
 }
 
-export const ONBOARDING_STEPS = ["組織", "GitHub", "リポジトリ", "プロファイル", "メンバー", "AIとデータ", "完了"];
+/** 経営層向けオンボーディングの手順（2026-11-28 改訂。screens/auth/parts.tsx の EXEC_STEPS と同じ） */
+export const ONBOARDING_STEPS = ["組織", "コードホスティング", "対象", "計画・カレンダー", "適用範囲", "プロファイル", "通知", "経営層の招待", "AIとデータ", "完了"];
 
 export function Stepper({ steps, current, errorAt }: { steps: string[]; current: number; errorAt?: number }) {
   return (
@@ -215,6 +219,10 @@ export function OnboardingLayout({ step, title, description, children, back, nex
 // ---------- アプリのレイアウト ----------
 export type NavKey =
   | "dashboard" | "inbox" | "notifications" | "projects" | "search" | "policies" | "settings"
+  | "portfolio" | "decisions" | "intake" | "priorities" | "capacity" | "roadmap" | "benefits" | "execSchedule"
+  | "connectors" | "notify" | "oncall" | "incidents"
+  | "schedule" | "milestones" | "closure" | "documents" | "defects" | "scans" | "builds"
+  | "gateSettings" | "baselines" | "shares"
   | "overview" | "sow" | "plan" | "progress" | "risks" | "changes" | "meetings"
   | "requirements" | "design" | "trace" | "verification"
   | "gates" | "pulls" | "exceptions" | "releases"
@@ -222,13 +230,42 @@ export type NavKey =
 
 type NavItem = { key: NavKey; label: string; icon: IconName; to: string; count?: number; alert?: boolean };
 
-function orgNav(org: string): NavItem[] {
+function orgNav(org: string): { group: string; items: NavItem[] }[] {
+  const pendingDecisions = decisions.filter((d) => d.status === "pending").length;
+  const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
+  const brokenConnectors = connectors.filter((c) => c.status === "failing" || c.status === "authExpired").length;
   return [
-    { key: "dashboard", label: "ダッシュボード", icon: "home", to: paths.orgHome(org) },
-    { key: "inbox", label: "承認待ち", icon: "inbox", to: paths.inbox(org), count: approvalRequests.length, alert: true },
-    { key: "projects", label: "プロジェクト", icon: "folder", to: paths.projects(org) },
-    { key: "policies", label: "ポリシー", icon: "layers", to: paths.policies(org) },
-    { key: "settings", label: "設定", icon: "settings", to: paths.settings(org) },
+    {
+      group: "",
+      items: [
+        { key: "dashboard", label: "経営ダッシュボード", icon: "home", to: paths.orgHome(org) },
+        { key: "inbox", label: "経営判断", icon: "inbox", to: paths.inbox(org), count: pendingDecisions, alert: true },
+        { key: "portfolio", label: "ポートフォリオ", icon: "grid", to: paths.portfolio(org) },
+        { key: "execSchedule", label: "スケジュール", icon: "calendar", to: paths.execSchedule(org) },
+      ],
+    },
+    {
+      group: "投資と配分",
+      items: [
+        { key: "intake", label: "案件受付", icon: "briefcase", to: paths.intake(org) },
+        { key: "priorities", label: "優先順位", icon: "sort", to: paths.priorities(org) },
+        { key: "capacity", label: "要員・予算", icon: "users", to: paths.capacity(org) },
+        { key: "roadmap", label: "ロードマップ", icon: "map", to: paths.roadmap(org) },
+        { key: "benefits", label: "便益・成果", icon: "trendingUp", to: paths.benefits(org) },
+      ],
+    },
+    {
+      group: "運用",
+      items: [
+        { key: "projects", label: "プロジェクト", icon: "folder", to: paths.projects(org) },
+        { key: "connectors", label: "連携と同期", icon: "plug", to: paths.connectors(org), count: brokenConnectors, alert: brokenConnectors > 0 },
+        { key: "notify", label: "通知", icon: "bell", to: paths.channels(org) },
+        { key: "incidents", label: "インシデント", icon: "zap", to: paths.incidents(org), count: openIncidents, alert: openIncidents > 0 },
+        { key: "oncall", label: "オンコール", icon: "phone", to: paths.oncall(org) },
+        { key: "policies", label: "ポリシー", icon: "layers", to: paths.policies(org) },
+        { key: "settings", label: "設定", icon: "settings", to: paths.settings(org) },
+      ],
+    },
   ];
 }
 
@@ -240,11 +277,15 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
       group: "計画と管理",
       items: [
         { key: "sow", label: "SOW", icon: "fileText", to: paths.sow(org, pr) },
-        { key: "plan", label: "プロジェクト計画", icon: "calendar", to: paths.plan(org, pr) },
+        { key: "schedule", label: "スケジュール", icon: "calendar", to: paths.schedule(org, pr) },
+        { key: "milestones", label: "マイルストーン・納入物", icon: "target", to: paths.milestones(org, pr) },
+        { key: "plan", label: "プロジェクト計画", icon: "fileText", to: paths.plan(org, pr) },
         { key: "progress", label: "進捗", icon: "chart", to: paths.progress(org, pr) },
         { key: "risks", label: "リスク・是正", icon: "alert", to: paths.risks(org, pr), count: p.open_risks },
         { key: "changes", label: "変更要求", icon: "compare", to: paths.changes(org, pr), count: p.open_changes },
-        { key: "meetings", label: "議事録", icon: "message", to: paths.meetings(org, pr) },
+        { key: "meetings", label: "会議・合意", icon: "message", to: paths.meetings(org, pr) },
+        { key: "documents", label: "文書の取込み", icon: "upload", to: paths.documents(org, pr) },
+        { key: "closure", label: "終了・引継ぎ", icon: "archive", to: paths.closure(org, pr) },
       ],
     },
     {
@@ -254,6 +295,9 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
         { key: "design", label: "設計・ADR", icon: "book", to: paths.designs(org, pr) },
         { key: "trace", label: "トレーサビリティ", icon: "trace", to: paths.trace(org, pr) },
         { key: "verification", label: "テスト・検証", icon: "checkSquare", to: paths.verification(org, pr) },
+        { key: "defects", label: "不具合と是正", icon: "alertCircle", to: paths.defects(org, pr) },
+        { key: "scans", label: "品質・セキュリティ", icon: "shieldCheck", to: paths.scans(org, pr) },
+        { key: "builds", label: "ビルド・CI証跡", icon: "cpu", to: paths.builds(org, pr) },
       ],
     },
     {
@@ -262,9 +306,16 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
         { key: "gates", label: "ゲート実行", icon: "shield", to: paths.gates(org, pr), count: p.blocked_prs, alert: p.blocked_prs > 0 },
         { key: "pulls", label: "PR", icon: "pullRequest", to: paths.pulls(org, pr) },
         { key: "exceptions", label: "例外", icon: "flag", to: paths.exceptions(org, pr), count: p.active_exceptions },
+        { key: "gateSettings", label: "ゲートの適用設定", icon: "settings", to: paths.gateSettings(org, pr) },
       ],
     },
-    { group: "リリース", items: [{ key: "releases", label: "リリースと受入", icon: "rocket", to: paths.releases(org, pr) }] },
+    {
+      group: "リリース",
+      items: [
+        { key: "releases", label: "リリースと受入", icon: "rocket", to: paths.releases(org, pr) },
+        { key: "baselines", label: "構成管理", icon: "commit", to: paths.baselines(org, pr) },
+      ],
+    },
     {
       group: "証跡と監査",
       items: [
@@ -272,6 +323,7 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
         { key: "manifests", label: "Evidence Manifest", icon: "signature", to: paths.manifests(org, pr) },
         { key: "auditLog", label: "監査ログ", icon: "history", to: paths.auditLog(org, pr) },
         { key: "auditExport", label: "監査パックの出力", icon: "package", to: paths.auditExport(org, pr) },
+        { key: "shares", label: "共有リンク", icon: "share", to: paths.shares(org, pr) },
       ],
     },
   ];
@@ -291,7 +343,12 @@ export function SideNav({ org, project, active, collapsed, onCollapse }: { org: 
   const p = project ? projectBySlug(project) : undefined;
   return (
     <nav className="sidenav" aria-label="メインナビゲーション">
-      {orgNav(org).map((item) => <NavLink key={item.key} item={item} active={active === item.key} />)}
+      {orgNav(org).map((g) => (
+        <div key={g.group || "top"} className="stack" style={{ ["--gap" as string]: "2px" }}>
+          {g.group ? <div className="nav-group">{g.group}</div> : null}
+          {g.items.map((item) => <NavLink key={item.key} item={item} active={active === item.key} />)}
+        </div>
+      ))}
       {p && project ? (
         <>
           <div className="nav-group">プロジェクト</div>
@@ -391,13 +448,13 @@ export function GlobalHeader({ org, onMenu }: { org: string; onMenu: () => void 
       <div className="header-center">
         <span className="desktop-only"><OrgSwitcher org={org} /></span>
         <form onSubmit={(e) => { e.preventDefault(); navigate(paths.search(org)); }} style={{ display: "contents" }}>
-          <SearchBox placeholder="要求、ADR、PR、証跡を検索" shortcut="/" />
+          <SearchBox placeholder="案件、判断、マイルストーン、証跡を検索" shortcut="/" />
         </form>
       </div>
       <div className="header-actions">
-        <Link to={paths.inbox(org)} className="icon-btn" aria-label={`承認待ち ${approvalRequests.length}件`}>
+        <Link to={paths.inbox(org)} className="icon-btn" aria-label={`経営判断待ち ${decisions.filter((d) => d.status === "pending").length}件`}>
           <Icon name="inbox" />
-          <span className="count">{approvalRequests.length}</span>
+          <span className="count">{decisions.filter((d) => d.status === "pending").length}</span>
         </Link>
         <NotificationMenu org={org} />
         <UserMenu />
@@ -501,12 +558,17 @@ export function MetaSection({ title, children, defaultOpen = true }: { title: Re
 export function SettingsNav({ org, active }: { org: string; active: string }) {
   const items: { key: string; label: string; to: string; icon: IconName }[] = [
     { key: "org", label: "組織", to: paths.settings(org), icon: "building" },
-    { key: "members", label: "メンバーとロール", to: paths.members(org), icon: "users" },
-    { key: "integrations", label: "連携", to: paths.integrations(org), icon: "github" },
+    { key: "members", label: "利用者とロール", to: paths.members(org), icon: "users" },
+    { key: "integrations", label: "連携（概要）", to: paths.integrations(org), icon: "plug" },
     { key: "ai", label: "AIとデータ分類", to: paths.aiSettings(org), icon: "sparkles" },
     { key: "evidence", label: "証跡の保管", to: paths.evidenceSettings(org), icon: "archive" },
     { key: "security", label: "セキュリティ", to: paths.security_(org), icon: "lock" },
+    { key: "actors", label: "外部アクターの対応付け", to: paths.actors(org), icon: "link" },
+    { key: "scopes", label: "閲覧範囲と判断権限", to: paths.scopes(org), icon: "eye" },
+    { key: "aiEval", label: "AIの評価", to: paths.aiEval(org), icon: "gauge" },
+    { key: "signing", label: "署名と検証", to: paths.signing(org), icon: "signature" },
     { key: "billing", label: "プランと請求", to: paths.billing(org), icon: "creditCard" },
+    { key: "usage", label: "利用量", to: paths.usage(org), icon: "barChart" },
   ];
   return (
     <nav className="stack" style={{ ["--gap" as string]: "2px" }} aria-label="設定">

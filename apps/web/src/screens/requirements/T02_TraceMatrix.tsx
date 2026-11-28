@@ -4,40 +4,35 @@ import { useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import type { Requirement } from "../../lib/types";
 import { ARTIFACT_STATUS } from "../../lib/vocab";
-import { requirements, testCases } from "../../mocks/core";
-import { verificationRecords } from "../../mocks/requirements";
-import { Button, CoverageMeter, Drawer, EmptyState, ErrorState, FilterBar, PageHeader, ProjectLayout, Skeleton, StatusBadge, TraceLinkEditor, TraceMatrix, useToast } from "../../ui";
-import type { MatrixCell, TraceLink } from "../../ui";
-import { linkCandidates, linksOf, org, project, reqPath } from "./common";
+import { designs, requirements, testCases } from "../../mocks/core";
+import { prTitles, reqSource } from "../../mocks/requirements";
+import { Button, CoverageMeter, Drawer, EmptyState, ErrorState, FilterBar, IdLink, PageHeader, ProjectLayout, Segmented, Skeleton, SourceTag, StatusBadge, Tag, TraceMatrix, useToast } from "../../ui";
+import type { MatrixCell } from "../../ui";
+import { CHAIN_STAGES, ChainTable, chainOf, designPath, org, project, reqPath, ViewOnlyNote } from "./common";
 
-const COLUMNS = ["設計", "コード／PR", "テストケース", "テスト結果（成功）", "検証"];
+const COLUMNS = [...CHAIN_STAGES];
 
 function cellsOf(r: Requirement): MatrixCell[] {
-  const ai = linksOf(r).filter((l) => l.ai);
-  const passed = r.test_ids.filter((t) => testCases.find((x) => x.id === t)?.last_result === "passed").length;
-  const ver = verificationRecords.filter((v) => v.target.includes(r.id)).length + (r.status === "approved" && r.test_ids.length ? 1 : 0);
-  return [
-    { count: r.design_ids.length, ai: ai.filter((l) => l.kind === "設計").length },
-    { count: r.pr_numbers.length, ai: ai.filter((l) => l.kind === "PR").length },
-    { count: r.test_ids.length, ai: ai.filter((l) => l.kind === "テスト").length },
-    { count: passed },
-    { count: ver },
-  ];
+  const links = chainOf(r);
+  return COLUMNS.map((st) => ({ count: links.filter((l) => l.stage === st && !l.ai).length, ai: links.filter((l) => l.stage === st && l.ai).length }));
 }
 
-function linksForCell(r: Requirement, col: number): TraceLink[] {
-  const all = linksOf(r);
-  if (col === 0) return all.filter((l) => l.kind === "設計");
-  if (col === 1) return all.filter((l) => l.kind === "PR");
-  if (col === 2 || col === 3) return all.filter((l) => l.kind === "テスト" && (col === 2 || testCases.find((t) => t.id === l.id)?.last_result === "passed"));
-  return verificationRecords.filter((v) => v.target.includes(r.id)).map((v) => ({ id: v.id, title: v.target, kind: "検証", relation: "verifies" }));
+/** 成果物から要求への逆方向（孤立した成果物を見つける） */
+function reverseRows() {
+  const reqOf = (pred: (r: Requirement) => boolean) => requirements.filter((r) => r.status !== "obsolete" && pred(r)).map((r) => r.id);
+  return [
+    ...designs.map((d) => ({ id: d.id, title: d.title, kind: "設計", reqs: d.requirement_ids, to: designPath(d.id) })),
+    ...Object.entries(prTitles).map(([n, t]) => ({ id: `PR #${n}`, title: t, kind: "コード／PR", reqs: reqOf((r) => r.pr_numbers.includes(Number(n))), to: undefined })),
+    ...testCases.map((t) => ({ id: t.id, title: t.title, kind: "テストケース", reqs: t.requirement_ids, to: undefined })),
+  ];
 }
 
 export function TraceMatrixScreen() {
   const state = useScreenState();
   const toast = useToast();
   const [values, setValues] = useState<Record<string, string>>({ status: "approved" });
-  const [open, setOpen] = useState<{ id: string; col: number } | null>(state === "drawer" ? { id: "REQ-0001", col: 2 } : null);
+  const [open, setOpen] = useState<{ id: string; col: number } | null>(state === "drawer" ? { id: "REQ-0002", col: 5 } : null);
+  const [direction, setDirection] = useState(state === "reverse" ? "reverse" : "forward");
   const reqs = state === "empty" ? [] : requirements.filter((r) => r.status !== "obsolete" && (!values.status || r.status === values.status) && (!values.kind || r.kind === values.kind));
   const matrix = reqs.map((r) => ({ id: r.id, title: r.title, cells: cellsOf(r) }));
   const opened = open ? requirements.find((r) => r.id === open.id) : undefined;
@@ -45,7 +40,8 @@ export function TraceMatrixScreen() {
     <ProjectLayout active="trace" trail={[{ label: "トレーサビリティ", to: paths.trace(org, project) }, { label: "表" }]}>
       <PageHeader
         title="トレーサビリティ表"
-        description="要求ごとに、成果物の種類別のリンク数を表示します。セルを押すとリンクの一覧を確認・編集できます。"
+        description="要求ごとに、設計からリリース成果物までの段別のリンク数を表示します。逆方向では、成果物がどの要求につながっているかと、要求につながらない成果物を確認できます。"
+        meta={<SourceTag source={reqSource("trace/edges.yaml・CI レポート")} />}
         actions={
           <>
             <Button icon="trace" to={paths.trace(org, project)}>グラフで見る</Button>
@@ -53,6 +49,10 @@ export function TraceMatrixScreen() {
           </>
         }
       />
+      <div className="row between">
+        <Segmented value={direction} onChange={setDirection} options={[{ value: "forward", label: "要求 → 成果物" }, { value: "reverse", label: "成果物 → 要求（逆方向）" }]} />
+        <ViewOnlyNote>リンクの追加・修正は担当者が正本で行います。</ViewOnlyNote>
+      </div>
       <FilterBar
         filters={[
           { key: "status", label: "要求の状態", options: Object.entries(ARTIFACT_STATUS).map(([value, v]) => ({ value, label: v.label })) },
@@ -65,6 +65,23 @@ export function TraceMatrixScreen() {
         <Skeleton rows={8} />
       ) : state === "error" ? (
         <ErrorState />
+      ) : direction === "reverse" ? (
+        <div className="card flush">
+          <div className="table-wrap">
+            <table className="table compact">
+              <thead><tr><th>成果物</th><th>種類</th><th>つながる要求</th></tr></thead>
+              <tbody>
+                {reverseRows().map((a) => (
+                  <tr key={a.id}>
+                    <td><div className="stack" style={{ ["--gap" as string]: "2px" }}>{a.to ? <IdLink id={a.id} to={a.to} /> : <span className="id-link">{a.id}</span>}<span className="tiny muted">{a.title}</span></div></td>
+                    <td><Tag square>{a.kind}</Tag></td>
+                    <td>{a.reqs.length ? <span className="row" style={{ ["--gap" as string]: "6px" }}>{a.reqs.map((r) => <IdLink key={r} id={r} to={reqPath(r)} />)}</span> : <Tag tone="fail" icon="alertCircle">要求につながっていない</Tag>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <>
           <div className="grid auto-fit">
@@ -95,7 +112,7 @@ export function TraceMatrixScreen() {
         subtitle={opened ? <span className="row"><StatusBadge vocab={ARTIFACT_STATUS[opened.status]} size="sm" />{opened.title}</span> : undefined}
         footer={opened ? <Button to={reqPath(opened.id)} iconRight="arrowRight">要求の詳細を開く</Button> : undefined}
       >
-        {opened && open ? <TraceLinkEditor links={linksForCell(opened, open.col)} candidates={linkCandidates} readOnly={open.col >= 3} /> : null}
+        {opened && open ? <ChainTable links={chainOf(opened).filter((l) => l.stage === COLUMNS[open.col])} empty={`${COLUMNS[open.col]}へのリンクはありません`} /> : null}
       </Drawer>
     </ProjectLayout>
   );

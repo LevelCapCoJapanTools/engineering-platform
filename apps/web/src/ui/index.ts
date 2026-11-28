@@ -5,3 +5,4 @@ export * from "./inputs";
 export * from "./overlay";
 export * from "./domain";
 export * from "./layout";
+export * from "./sync";

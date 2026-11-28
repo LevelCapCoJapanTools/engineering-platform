@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { useScreenState } from "../../lib/router";
 import { ORG, paths } from "../../lib/paths";
-import { migrationImpact, packBySlug } from "../../mocks/policy";
+import { migrationImpact, migrationLog, migrationMissing, packBySlug } from "../../mocks/policy";
+import { userById } from "../../mocks/core";
 import {
   AppLayout,
   ApprovalPanel,
@@ -19,6 +20,8 @@ import {
   PolicyVersionTag,
   Section,
   StatusBadge,
+  Tag,
+  Timestamp,
   useToast,
 } from "../../ui";
 
@@ -48,6 +51,7 @@ export function MigrationReport({ org = ORG, pack: slug, id }: { org?: string; p
       {run === "done" ? <Banner tone="pass" title="移行が完了しました">2件のプロジェクトが Basic Control Pack 1.3.1 に移行しました。以後の判定は新しいバージョンで行われます。</Banner> : null}
       <DetailLayout
         main={
+          <>
           <Section title="プロジェクトごとの影響" sub="新たに未充足になる統制項目の数" flush>
             <div className="table-wrap">
               <table className="table">
@@ -74,12 +78,44 @@ export function MigrationReport({ org = ORG, pack: slug, id }: { org?: string; p
               </table>
             </div>
           </Section>
+          <Section title="新たに未充足になる項目" sub="移行後に証跡や承認の追加が必要になる統制項目とルール">
+            <div className="stack" style={{ ["--gap" as string]: "10px" }}>
+              {Object.entries(migrationMissing).map(([project, items]) => (
+                <div key={project} className="stack" style={{ ["--gap" as string]: "4px" }}>
+                  <span className="small strong">{project}</span>
+                  {items.length ? <div className="row" style={{ ["--gap" as string]: "4px" }}>{items.map((i) => <Tag key={i} tone="warn" square>{i}</Tag>)}</div> : <span className="small muted">なし</span>}
+                </div>
+              ))}
+            </div>
+          </Section>
+          <Section title="実行記録" sub="作成・承認・対象の選択・実行の結果を残します。既存の判定結果は旧版のまま保持されます" flush>
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead><tr><th>日時</th><th>実行者</th><th>内容</th><th>結果</th></tr></thead>
+                <tbody>
+                  {[
+                    ...migrationLog,
+                    ...(approved ? [{ at: "2026-11-27T10:10:00+09:00", actor: "u-mori", step: "CTO として承認（申請者とは別の承認者）", result: "ok" as const }] : []),
+                    ...(run === "done" ? [{ at: "2026-11-27T10:30:00+09:00", actor: "system", step: `${selected.join("、")} を 1.3.1 に移行。旧版での判定 1,284 件は変更せず保持`, result: "ok" as const }] : []),
+                  ].map((l) => (
+                    <tr key={l.at + l.step}>
+                      <td><Timestamp at={l.at} mode="absolute" /></td>
+                      <td className="small">{l.actor === "system" ? "システム" : userById(l.actor)?.name}</td>
+                      <td className="small">{l.step}</td>
+                      <td>{l.result === "ok" ? <Tag tone="pass" icon="check">完了</Tag> : l.result === "warn" ? <Tag tone="warn" icon="alert">注意</Tag> : <Tag tone="fail" icon="xCircle">失敗</Tag>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+          </>
         }
         side={
           <>
             <MetaSection title="移行の承認">
               <ApprovalPanel
-                approvers={[{ role: "ポリシー管理者", user_id: "u-yamamoto", status: "approved", decided_at: "2026-11-26T10:00:00+09:00" }, { role: "組織管理者", user_id: approved ? "u-yamamoto" : undefined, status: approved ? "approved" : "pending" }]}
+                approvers={[{ role: "ポリシー管理者", user_id: "u-yamamoto", status: "approved", decided_at: "2026-11-26T10:00:00+09:00" }, { role: "CTO", user_id: "u-mori", status: approved ? "approved" : "pending", decided_at: approved ? "2026-11-27T10:10:00+09:00" : undefined }]}
                 canDecide={!approved}
                 onDecide={(d) => { if (d === "approved") setApproved(true); toast({ kind: "success", message: d === "approved" ? "移行を承認しました" : "移行を差し戻しました" }); }}
               />

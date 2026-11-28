@@ -13,6 +13,10 @@ import { settingsScreens } from "./settings";
 import { externalScreens } from "./external";
 import { systemScreens } from "./system";
 import { devScreens } from "./dev";
+import { executiveScreens } from "./executive";
+import { portfolioScreens } from "./portfolio";
+import { connectorScreens } from "./connectors";
+import { notifyScreens } from "./notify";
 
 export const GROUP_ORDER = [
   "6.1 公開サイト",
@@ -28,10 +32,16 @@ export const GROUP_ORDER = [
   "6.11 外部利用者向け",
   "6.12 共通の状態画面",
   "6.13 Web以外の表示面",
+  "6.14 経営: ダッシュボードと判断",
+  "6.15 経営: 投資と配分",
+  "6.16 連携と同期",
+  "6.17 通知とオンコール",
   "開発用",
 ];
 
 export const screens: ScreenDef[] = [
+  ...executiveScreens,
+  ...portfolioScreens,
   ...publicScreens,
   ...authScreens,
   ...orgScreens,
@@ -44,5 +54,7 @@ export const screens: ScreenDef[] = [
   ...settingsScreens,
   ...externalScreens,
   ...systemScreens,
+  ...connectorScreens,
+  ...notifyScreens,
   ...devScreens,
 ];

@@ -40,3 +40,20 @@ export function percent(n: number, total: number) {
 export function yen(n: number) {
   return `¥${n.toLocaleString("ja-JP")}`;
 }
+
+/** 2つの日付の差（日）。b が a より後なら正 */
+export function daysBetween(a: string, b: string) {
+  const d = (x: string) => new Date(x.length === 10 ? `${x}T00:00:00+09:00` : x).getTime();
+  return Math.round((d(b) - d(a)) / 86400000);
+}
+
+/** 最終同期からの経過分 */
+export function minutesSince(iso?: string) {
+  if (!iso) return Infinity;
+  return Math.floor((NOW.getTime() - new Date(iso).getTime()) / 60000);
+}
+
+/** 百万円単位の短い表記（経営向け） */
+export function yenM(n: number) {
+  return `${(n / 1_000_000).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}百万円`;
+}

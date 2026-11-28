@@ -1,0 +1,22 @@
+/* 経営: ダッシュボードと判断（exec- 接頭辞） */
+.exec-decision-card { display: flex; flex-direction: column; gap: 8px; }
+.exec-decision-title { font-weight: 600; color: var(--text); text-decoration: none; line-height: 1.5; }
+.exec-decision-title:hover { color: var(--primary); text-decoration: underline; }
+.exec-route-note { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--tone-info-bg); color: var(--text); }
+.exec-route-note svg { color: var(--tone-info); flex: none; margin-top: 2px; }
+.exec-ai-item { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.exec-ai-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.exec-ai-item:first-child { padding-top: 0; }
+.exec-work-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.exec-work-list li { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--border); min-width: 0; }
+.exec-work-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.exec-lane-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.exec-lane-head .count { font-size: var(--text-xs); color: var(--muted); }
+.exec-option { display: flex; gap: 10px; align-items: flex-start; }
+.exec-followups { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.exec-followups li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.exec-capacity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.exec-bar { height: 8px; border-radius: 4px; background: var(--tone-neutral-bg); overflow: hidden; grid-column: 1 / -1; }
+.exec-bar > span { display: block; height: 100%; background: var(--tone-pass); }
+.exec-bar.over > span { background: var(--tone-fail); }
+.exec-source-row { display: flex; flex-wrap: wrap; gap: 6px 14px; }

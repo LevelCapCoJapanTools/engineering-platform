@@ -16,6 +16,15 @@ import type {
   ReleaseStatus,
   RiskStatus,
   Role,
+  CaseStatus,
+  ConnectorCategory,
+  DateConfidence,
+  DecisionStatus,
+  Health,
+  IncidentStatus,
+  ProviderKey,
+  Severity,
+  SyncStatus,
 } from "./vocab";
 
 export type UserKind = "member" | "external" | "agent";
@@ -30,6 +39,12 @@ export type User = {
   status: MemberStatus;
   company?: string;
   github?: string;
+  /** 役職（経営層の表示用） */
+  title?: string;
+  /** 本サービスに直接ログインするか。false はプロセス上のアクター（外部IDだけで記録） */
+  account?: boolean;
+  /** 外部システムの本人ID。活動記録の主体をこれで対応付ける */
+  external_ids?: { provider: ProviderKey; handle: string }[];
   joined_at?: string;
   last_active_at?: string;
 };
@@ -328,4 +343,141 @@ export type Notification = {
   at: string;
   read: boolean;
   link?: string;
+};
+
+
+// ---- 2026-11-28 追加: 経営判断・同期・連携 ----
+
+/** データの出典。経営向け表示では常に正本と最終同期時刻を併記する */
+export type SourceRef = { provider: ProviderKey; label?: string; url?: string; synced_at?: string; status?: SyncStatus };
+
+export type ConnectorInstallation = {
+  id: string;
+  provider: ProviderKey;
+  category: ConnectorCategory;
+  name: string;
+  /** 対象（組織、プロジェクト、カレンダー、チャンネル等） */
+  scope: string;
+  hosting?: string;
+  status: SyncStatus;
+  last_success_at?: string;
+  last_attempt_at?: string;
+  lag_minutes?: number;
+  object_count?: number;
+  error?: string;
+  installed_by: string;
+  credential_rotated_at?: string;
+  mode: "read" | "readWriteStatus" | "send" | "interactive";
+};
+
+export type ProjectHealth = {
+  slug: string;
+  health: Health;
+  sponsor_id: string;
+  division: string;
+  baseline_end: string;
+  forecast_end: string;
+  slip_days: number;
+  budget: number;
+  actual_cost: number;
+  forecast_cost: number;
+  evidence_readiness: number;
+  next_decision?: { date: string; title: string };
+  source: SourceRef;
+  ai_summary?: string;
+};
+
+export type Milestone = {
+  id: string;
+  project: string;
+  title: string;
+  kind: "milestone" | "delivery" | "release" | "review";
+  baseline: string;
+  revised?: string;
+  forecast?: string;
+  actual?: string;
+  confidence: DateConfidence;
+  owner: string;
+  depends_on?: string[];
+  source: SourceRef;
+  change_reason?: string;
+  approved_by?: string;
+};
+
+export type Decision = {
+  id: string;
+  title: string;
+  kind: "investment" | "priority" | "resource" | "riskAcceptance" | "exception" | "release" | "change" | "budget" | "benefit";
+  project?: string;
+  case_id?: string;
+  status: DecisionStatus;
+  due: string;
+  impact: string;
+  impact_yen?: number;
+  severity: Severity;
+  requested_by: string;
+  decider_id?: string;
+  /** 実務上の承認者が経営層ではない場合の正しい承認者 */
+  practical_approver?: string;
+  options?: string[];
+  decided_at?: string;
+  reason?: string;
+  conditions?: string;
+  follow_up?: { title: string; owner: string; due: string; done: boolean }[];
+  evidence: string[];
+};
+
+export type BusinessCase = {
+  id: string;
+  title: string;
+  status: CaseStatus;
+  customer?: string;
+  sponsor_id: string;
+  proposer: string;
+  strategy: string;
+  problem: string;
+  options: { name: string; cost: number; benefit: string; risk: string; recommended?: boolean }[];
+  cost: number;
+  expected_benefit: string;
+  value_score: number;
+  urgency: number;
+  risk_score: number;
+  kpis: { name: string; baseline: string; target: string; actual?: string; measured_at?: string; source?: string }[];
+  review_date?: string;
+  project?: string;
+  submitted_at: string;
+};
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  project?: string;
+  start: string;
+  end?: string;
+  all_day?: boolean;
+  timezone: string;
+  status: "confirmed" | "moved" | "cancelled";
+  recurring?: boolean;
+  organizer: string;
+  calendar: string;
+  source: SourceRef;
+  decision_due?: string;
+};
+
+export type Incident = {
+  id: string;
+  title: string;
+  severity: Severity;
+  status: IncidentStatus;
+  service: string;
+  project?: string;
+  environment: string;
+  triggered_at: string;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  escalation_level: number;
+  related_release?: string;
+  dedup_key: string;
 };

@@ -1,9 +1,9 @@
 // 画面ID: S-07 プランと請求
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
-import { ORG } from "../../lib/paths";
+import { ORG, paths } from "../../lib/paths";
 import { yen } from "../../lib/format";
-import { invoices, plans } from "../../mocks/settings";
+import { contract, invoices, plans, usage } from "../../mocks/settings";
 import { Banner, Button, CoverageMeter, ErrorState, Icon, KeyValueList, Modal, OptionCard, PlanLimitNotice, Section, SettingsLayout, Skeleton, Tag, useToast } from "../../ui";
 
 export function S07Billing({ org = ORG }: { org?: string }) {
@@ -14,10 +14,10 @@ export function S07Billing({ org = ORG }: { org?: string }) {
   const [payment, setPayment] = useState(false);
   const atLimit = state === "上限到達";
   const failed = state === "支払い失敗";
-  const repoUsed = atLimit ? 10 : 4;
+  const seatUsed = atLimit ? 5 : usage.seats.used;
 
   return (
-    <SettingsLayout org={org} active="billing" title="プランと請求" description="プランの変更は次回の請求から日割りで反映されます。">
+    <SettingsLayout org={org} active="billing" title="プランと請求" description="課金は経営層のシートとプロジェクト数で決まります。PM・開発者・QA・顧客などのアクターは課金対象外です。プランの変更は次回の請求から日割りで反映されます。">
       {state === "読み込み中" ? (
         <Skeleton variant="detail" />
       ) : state === "エラー" ? (
@@ -26,10 +26,10 @@ export function S07Billing({ org = ORG }: { org?: string }) {
         <>
           {failed ? (
             <Banner tone="fail" title="2026年11月分のお支払いができませんでした" action={<Button variant="primary" onClick={() => setPayment(true)}>支払い方法を変更</Button>}>
-              カードの有効期限が切れています。2026-12-08 までに支払い方法を更新してください。期限を過ぎると、新しいゲートの判定が停止します（証跡は保持されます）。
+              カードの有効期限が切れています。2026-12-08 までに支払い方法を更新してください。期限を過ぎても、既存の証跡・監査ログ・ゲートの判定は止まりません。新しい連携と利用者の追加だけが停止します。
             </Banner>
           ) : null}
-          {atLimit ? <PlanLimitNotice resource="リポジトリ" used={10} limit={10} plan="Team" /> : null}
+          {atLimit ? <PlanLimitNotice resource="経営層シート" used={5} limit={5} plan="Team" /> : null}
 
           <div className="grid cols-2">
             <section className="card stack">
@@ -43,10 +43,12 @@ export function S07Billing({ org = ORG }: { org?: string }) {
                 </div>
                 <Button variant="primary" onClick={() => setChanging(true)}>プランを変更</Button>
               </div>
-              <div className="small muted">¥99,800／月（税別） · WORM 保管、監査ダッシュボード、SSO を含む</div>
-              <CoverageMeter label="リポジトリ" value={repoUsed} total={10} />
-              <div className="row between small"><span className="muted">メンバー</span><span className="strong">9名（上限なし）</span></div>
-              <div className="row between small"><span className="muted">AI の利用量</span><span className="strong">今月 182件（目安内）</span></div>
+              <div className="small muted">¥99,800／月（税別） · {contract.term}</div>
+              <CoverageMeter label="経営層シート" value={seatUsed} total={usage.seats.limit} />
+              <CoverageMeter label="プロジェクト" value={usage.projects.used} total={usage.projects.limit} />
+              <div className="row between small"><span className="muted">外部IDで記録したアクター</span><span className="strong">{usage.actors.count}名（課金対象外）</span></div>
+              <div className="row between small"><span className="muted">AI の費用（今月）</span><span className="strong">{yen(usage.aiCost.usedYen)}（含まれる枠 {yen(usage.aiCost.includedYen)}）</span></div>
+              <div><Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.usage(org)}>利用量の詳細</Button></div>
             </section>
             <section className="card stack">
               <div className="label">次回の請求</div>
@@ -57,10 +59,36 @@ export function S07Billing({ org = ORG }: { org?: string }) {
                 items={[
                   { label: "支払い方法", value: <span className="row"><Icon name="creditCard" size={15} />クレジットカード ···· 4242{failed ? <Tag tone="fail">有効期限切れ</Tag> : <span className="tiny muted">有効期限 2028/04</span>}</span> },
                   { label: "請求先", value: "サンプルソフト株式会社 経理部" },
+                  { label: "契約", value: contract.term },
+                  { label: "支払状態", value: failed ? <Tag tone="fail">未払い（11月分）</Tag> : <Tag tone="pass">{contract.paymentStatus}</Tag> },
                 ]}
               />
               <div><Button size="sm" icon="edit" onClick={() => setPayment(true)}>支払い方法を変更</Button></div>
             </section>
+          </div>
+
+          <div className="grid cols-2">
+            <Section title="追加の契約" sub="シートやプロジェクトが足りないときに追加できます">
+              <div className="table-wrap">
+                <table className="table compact">
+                  <thead><tr><th>項目</th><th>単価</th><th className="num">数量</th></tr></thead>
+                  <tbody>
+                    {contract.addOns.map((a) => (
+                      <tr key={a.name}><td className="small">{a.name}</td><td className="small">{a.unit}</td><td className="num">{a.qty}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+            <Section title="上限に達したときの動作" sub="上限を超えても、記録済みのデータは失われません">
+              <ul className="small" style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+                <li>証跡、Evidence Manifest、監査ログは保持期間どおり残ります</li>
+                <li>ゲートの判定と既存の連携の同期は続きます</li>
+                <li>シートの上限: 新しい利用者を招待できなくなります</li>
+                <li>プロジェクトの上限: 新しいプロジェクトを作れなくなります</li>
+                <li>AI 費用の上限: AI 機能だけが止まり、人の承認とゲートは動き続けます</li>
+              </ul>
+            </Section>
           </div>
 
           <Section title="請求書" flush>
@@ -106,9 +134,9 @@ export function S07Billing({ org = ORG }: { org?: string }) {
               checked={plan === p.key}
               onChange={setPlan}
               title={p.key}
-              disabled={p.key === "Starter" && repoUsed > 3}
+              disabled={p.key === "Starter" && (usage.projects.used > 3 || seatUsed > 2)}
               badge={p.key === "Team" ? <Tag tone="primary">現在のプラン</Tag> : <span className="small strong">{p.price}</span>}
-              description={p.key === "Starter" && repoUsed > 3 ? `${p.summary}（現在 ${repoUsed} リポジトリのため選べません）` : p.summary}
+              description={p.key === "Starter" && (usage.projects.used > 3 || seatUsed > 2) ? `${p.summary}（現在 シート ${seatUsed}・プロジェクト ${usage.projects.used} のため選べません）` : p.summary}
             />
           ))}
         </div>

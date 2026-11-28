@@ -1,0 +1,15 @@
+/* 連携と同期（K-01〜K-08）。クラスは kn- 接頭辞 */
+.kn-note { padding: 10px 16px; }
+.kn-err { margin-top: 4px; max-width: 280px; white-space: normal; }
+.kn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--text-sm); }
+.kn-list li { display: flex; gap: 8px; align-items: flex-start; }
+.kn-list li svg { margin-top: 3px; color: var(--muted); flex: none; }
+.kn-bar { height: 8px; border-radius: 4px; background: var(--tone-neutral-bg); overflow: hidden; }
+.kn-bar > span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+.kn-bar.warn > span { background: var(--tone-warn); }
+.kn-bar.fail > span { background: var(--tone-fail); }
+.kn-matrix th, .kn-matrix td { text-align: center; }
+.kn-matrix th:first-child, .kn-matrix td:first-child { text-align: left; }
+.kn-matrix td.kn-method { text-align: left; max-width: 320px; white-space: normal; }
+.kn-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--text-sm); }
+.kn-flow .kn-step { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }

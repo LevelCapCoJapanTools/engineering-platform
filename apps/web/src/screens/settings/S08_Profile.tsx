@@ -4,7 +4,7 @@ import { useScreenState } from "../../lib/router";
 import { ORG } from "../../lib/paths";
 import { currentUser } from "../../mocks/core";
 import { notificationKinds } from "../../mocks/settings";
-import { AppLayout, Avatar, Banner, Button, ErrorState, FileUpload, Icon, PageHeader, RoleBadge, Section, Segmented, Select, Skeleton, Tag, TextField, crumbs, useTheme, useToast } from "../../ui";
+import { AppLayout, Avatar, Banner, Button, Checkbox, ErrorState, FileUpload, PageHeader, ProviderBadge, RoleBadge, Section, Segmented, Select, Skeleton, Tag, TextField, crumbs, useTheme, useToast } from "../../ui";
 
 export function S08Profile() {
   const state = useScreenState();
@@ -14,7 +14,7 @@ export function S08Profile() {
   const [prefs, setPrefs] = useState<Record<string, { mail: boolean; app: boolean }>>(
     Object.fromEntries(notificationKinds.map((k) => [k.key, { mail: ["approval", "exception", "acceptance"].includes(k.key), app: true }])),
   );
-  const githubLinked = state !== "GitHub未連携";
+  const githubLinked = state !== "チャット未連携";
 
   return (
     <AppLayout org={ORG} active="settings" breadcrumb={crumbs(ORG, undefined, { label: "個人設定" })}>
@@ -65,19 +65,43 @@ export function S08Profile() {
                 </table>
               </div>
             </Section>
+            <Section title="受け取り方" sub="組織の通知ルールのうち、あなた宛ての通知の届け方を選べます">
+              <div className="stack">
+                <div className="field">
+                  <span className="field-label">チャネル</span>
+                  <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+                    <Checkbox label="アプリ内通知" defaultChecked disabled description="常に受け取ります" />
+                    <Checkbox label="メール" defaultChecked />
+                    <Checkbox label="Slack のダイレクトメッセージ" defaultChecked={githubLinked} disabled={!githubLinked} description={githubLinked ? "ボタンで判断できます" : "Slack アカウントの連携が必要です"} />
+                  </div>
+                </div>
+                <div className="grid cols-2">
+                  <TextField label="静穏時間" defaultValue="22:00〜7:00" help="緊急の通知（インシデント、証跡の保管失敗）は届きます" />
+                  <Select label="タイムゾーン" defaultValue="org" options={[{ value: "org", label: "組織の設定（Asia/Tokyo）" }, { value: "America/Los_Angeles", label: "America/Los_Angeles" }]} />
+                </div>
+                <Select label="要約の頻度" defaultValue="daily" options={[{ value: "none", label: "要約を受け取らない（個別に受け取る）" }, { value: "daily", label: "毎朝 8:00 に要約" }, { value: "twice", label: "朝 8:00 と夕方 17:00 に要約" }, { value: "weekly", label: "毎週月曜 8:00 に要約" }]} help="要約に含めた通知は、個別には送りません（期限当日と緊急を除く）" />
+                <Select label="一時的に止める" defaultValue="" options={[{ value: "", label: "止めない" }, { value: "1d", label: "明日まで（緊急を除く）" }, { value: "1w", label: "1 週間（緊急を除く）" }]} />
+              </div>
+            </Section>
           </div>
 
           <div className="stack">
-            <Section title="連携しているアカウント">
+            <Section title="連携しているアカウント" sub="チャットでのボタン操作を本人として照合するために使います">
               {githubLinked ? (
-                <div className="row between">
-                  <span className="row"><Icon name="github" size={18} /><span className="stack" style={{ ["--gap" as string]: "0" }}><span className="strong">{currentUser.github}</span><span className="tiny muted">GitHub · PR の作成者・レビュー者の照合に使います</span></span></span>
-                  <Button size="sm" variant="ghost">解除</Button>
+                <div className="stack" style={{ ["--gap" as string]: "10px" }}>
+                  <div className="row between">
+                    <span className="row"><ProviderBadge provider="slack" /><span className="tiny muted">@kimura</span></span>
+                    <Button size="sm" variant="ghost">解除</Button>
+                  </div>
+                  <div className="row between">
+                    <span className="row"><ProviderBadge provider="googleCalendar" /><span className="tiny muted">{currentUser.email}</span></span>
+                    <Button size="sm" variant="ghost">解除</Button>
+                  </div>
                 </div>
               ) : (
                 <div className="stack" style={{ ["--gap" as string]: "10px" }}>
-                  <Banner tone="warn">GitHub アカウントが連携されていません。PR のレビューを承認として記録できません。</Banner>
-                  <Button icon="github" variant="primary">GitHub アカウントを連携</Button>
+                  <Banner tone="warn">チャットのアカウントが連携されていません。Slack などのボタンからの判断は、本人と照合できないため受け付けません。</Banner>
+                  <Button icon="link" variant="primary">Slack アカウントを連携</Button>
                 </div>
               )}
             </Section>

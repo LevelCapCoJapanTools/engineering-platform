@@ -1,11 +1,12 @@
 // 画面ID: G-02 ゲート実行の詳細
 import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
-import { GATE_STATUS } from "../../lib/vocab";
+import { CHECK_ANOMALY, GATE_STATUS } from "../../lib/vocab";
 import type { GateLetter, GateRun } from "../../lib/types";
 import { GATE_LABELS } from "../../lib/types";
 import { exceptionById, gateRuns, requirementById, userById } from "../../mocks/core";
-import { prFindings, runTimeline } from "../../mocks/gates";
+import { CHANGE_TERM, checkInputs, invalidatedBySha, otherRuns, prFindings, pullByNumber, ruleDefs, runTimeline } from "../../mocks/gates";
+import type { ScmProvider } from "../../mocks/gates";
 import { formatDateTime } from "../../lib/format";
 import {
   ActorLabel,
@@ -18,6 +19,9 @@ import {
   DetailLayout,
   EnforcementBadge,
   ExceptionSummary,
+  ExternalActor,
+  ProviderBadge,
+  Tag,
   GateResultPanel,
   HashDisplay,
   Icon,
@@ -46,11 +50,15 @@ const STATE_RUN: Record<string, string> = {
   exception: "run-5815",
   running: "run-5830",
   stale: "run-5821",
+  anomaly: "run-5821",
 };
 
-function pickRun(state: string, runId: string): GateRun {
+function pickRun(state: string, runId: string): GateRun & { provider: ScmProvider; repo: string } {
   const id = STATE_RUN[state] ?? runId;
-  return gateRuns.find((g) => g.id === id) ?? gateRuns[0];
+  const other = otherRuns.find((g) => g.id === id);
+  if (other) return other;
+  const run = gateRuns.find((g) => g.id === id) ?? gateRuns[0];
+  return { ...run, provider: "github", repo: pullByNumber(run.pr_number)?.repo ?? "sample-soft/order-api" };
 }
 
 function summary(run: GateRun) {
@@ -80,6 +88,9 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
   const fixes = run.reasons.filter((r) => r.result !== "pass");
   const exception = run.exception_id ? exceptionById(run.exception_id) : undefined;
   const isAgentPr = run.author.kind === "ai";
+  const inputs = checkInputs(state === "anomaly");
+  const anomalies = inputs.filter((c) => c.anomaly);
+  const term = CHANGE_TERM[run.provider];
 
   const approvers: Approver[] = run.required_approvals.map((a) => ({
     role: a.role,
@@ -94,8 +105,18 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
   const main = (
     <>
       {state === "stale" ? (
-        <Banner tone="warn" title="この判定は古いコミットに対するものです" action={<Button size="sm" variant="primary" icon="arrowRight" onClick={() => navigate(paths.gate(org, project, "run-5830"))}>最新の実行へ</Button>}>
-          PR に新しいコミット（<span className="mono">7c1e0a4</span>）が追加されています。最新のコミットに対する判定を確認してください。
+        <Banner tone="fail" title="新しいコミットが追加されたため、この判定と承認は失効しました" action={<Button size="sm" variant="primary" icon="arrowRight" onClick={() => navigate(paths.gate(org, project, "run-5830"))}>最新の実行へ</Button>}>
+          <div className="stack" style={{ ["--gap" as string]: "4px" }}>
+            <span>{CHANGE_TERM[run.provider]} に新しいコミット（<span className="mono">7c1e0a4</span>）が追加されました。古いコミットの結果や承認は新しいコミットに流用しません。新しいコミットで再評価と再承認が必要です。</span>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {invalidatedBySha.map((i) => <li key={i.kind + i.id}><strong>{i.kind}</strong> {i.id} — <span className="muted">{i.detail}</span></li>)}
+            </ul>
+          </div>
+        </Banner>
+      ) : null}
+      {anomalies.length ? (
+        <Banner tone="fail" title={`外部チェック結果に異常が ${anomalies.length} 件あります`}>
+          異常な結果はどれも「通過」として扱いません。必須チェックが正しい提供元から、対象コミットに対して届くまでゲートは確定しません。下の「入力した外部チェック結果」で内容を確認してください。
         </Banner>
       ) : null}
 
@@ -148,18 +169,72 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
         </div>
       ))}
 
+      <Section title="ルールと判定の根拠" sub="ルールごとに、対象の統制項目・判定の主体・必要な証跡・修正案を示します" flush>
+        <div className="table-wrap">
+          <table className="table compact">
+            <thead><tr><th>ルール</th><th>説明</th><th>統制項目</th><th>判定の主体</th><th>証跡</th><th>結果</th><th>修正案</th></tr></thead>
+            <tbody>
+              {run.reasons.map((r) => {
+                const d = ruleDefs[r.rule_id];
+                return (
+                  <tr key={r.rule_id + r.message}>
+                    <td className="mono small">{r.rule_id}</td>
+                    <td className="small">{d?.title ?? r.message}</td>
+                    <td>{d ? <IdLink id={d.control} to={paths.control(org, project, d.control)} /> : <span className="muted">—</span>}</td>
+                    <td><ActorLabel kind={d?.actor ?? "ci"} size="sm" /></td>
+                    <td className="small">{d?.evidence ?? "—"}</td>
+                    <td><StatusBadge vocab={GATE_STATUS[r.result === "block" ? "block" : r.result === "warn" ? "warn" : "pass"]} size="sm" /></td>
+                    <td className="small">{r.fix ?? <span className="muted">—</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="入力した外部チェック結果" sub={`ゲートの入力に使った CI 等の結果です。対象コミット ${run.commit_sha.slice(0, 7)} と一致し、登録済みの提供元から届いたものだけを使います`} flush>
+        <div className="table-wrap">
+          <table className="table compact">
+            <thead><tr><th>チェック</th><th>提供元</th><th>コミット</th><th>結果</th><th>扱い</th><th>受信</th></tr></thead>
+            <tbody>
+              {inputs.map((c) => (
+                <tr key={c.name}>
+                  <td className="mono small">{c.name}</td>
+                  <td className="small">{c.provider}</td>
+                  <td className="mono small">{c.sha}</td>
+                  <td>{c.status === "success" ? <Tag tone="pass" icon="check">成功</Tag> : c.status === "failure" ? <Tag tone="fail" icon="x">失敗</Tag> : <Tag icon="clock">未完了</Tag>}</td>
+                  <td>
+                    {c.anomaly ? (
+                      <span className="stack" style={{ ["--gap" as string]: "2px" }}>
+                        <StatusBadge vocab={CHECK_ANOMALY[c.anomaly]} size="sm" />
+                        <span className="tiny muted">{c.note}・通過として扱わない</span>
+                      </span>
+                    ) : (
+                      <span className="small">{c.note ?? "判定に使用"}</span>
+                    )}
+                  </td>
+                  <td><Timestamp at={c.at} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
       <Section title="必要な人間の承認（ゲートC）" sub="承認は人間だけが行えます。AIエージェントは承認できません。">
         {approvers.length ? (
           <ApprovalPanel
             approvers={approvers}
             blockedReason={
               isAgentPr
-                ? "AIエージェントの PR は、開発者または設計者のロールを持つ人間が承認します。あなた（PM）はこの PR の承認者ではありません。"
+                ? `AIエージェントの ${term} は、開発者または設計者が Git サービス上のレビューで承認します。経営層の画面からは承認しません。`
                 : approvers.every((a) => a.status === "approved")
                   ? undefined
-                  : "このゲートの承認には設計者または開発者のロールが必要です。"
+                  : `このゲートの承認は、設計者または開発者が Git サービス上のレビューで行います。承認者の外部IDで記録します。`
             }
             eligible={isAgentPr ? membersWithRole("開発者") : membersWithRole("設計者")}
+            canDecide={false}
           />
         ) : (
           <p className="small muted">この変更に必要な人間の承認はありません。</p>
@@ -192,6 +267,9 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
               { label: "強制レベル", value: <EnforcementBadge level={run.enforcement} showDescription /> },
             ]}
           />
+          <div className="row end" style={{ marginTop: 12 }}>
+            <Button icon="refresh" to={paths.gateReplay(org, project, run.id)}>保存済みの入力で判定を再現</Button>
+          </div>
         </div>
       </details>
     </>
@@ -203,9 +281,10 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
         <KeyValueList
           stacked
           items={[
-            { label: "PR", value: run.pr_number ? <CodeRef kind="pr" repo="sample-soft/order-api" value={String(run.pr_number)} /> : <span className="muted">なし（ブランチ実行）</span> },
+            { label: "提供元", value: <ProviderBadge provider={run.provider} size="sm" /> },
+            { label: term, value: run.pr_number ? <CodeRef kind="pr" repo={run.repo} value={String(run.pr_number)} /> : <span className="muted">なし（ブランチ実行）</span> },
             { label: "ブランチ", value: <span className="mono small">{run.branch}</span> },
-            { label: "作成者", value: <ActorLabel kind={run.author.kind} name={run.author.name} /> },
+            { label: "作成者", value: run.author.kind === "human" ? <ExternalActor userId={run.author.user_id} name={run.author.name} /> : <ActorLabel kind={run.author.kind} name={run.author.name} /> },
             { label: "実行日時", value: <Timestamp at={run.started_at} mode="absolute" /> },
           ]}
         />
@@ -240,11 +319,12 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
     <ProjectLayout org={org} project={project} active="gates" trail={[{ label: "ゲート実行", to: paths.gates(org, project) }, { label: run.id }]}>
       <PageHeader
         id={run.id}
-        title={run.pr_number ? `#${run.pr_number} ${run.pr_title}` : run.pr_title}
+        title={run.pr_number ? `${term} #${run.pr_number} ${run.pr_title}` : run.pr_title}
         status={GATE_STATUS[run.verdict]}
         meta={
           <>
-            {run.pr_number ? <CodeRef kind="pr" repo="sample-soft/order-api" value={String(run.pr_number)} /> : null}
+            <ProviderBadge provider={run.provider} size="sm" />
+            {run.pr_number ? <CodeRef kind="pr" repo={run.repo} value={String(run.pr_number)} /> : null}
             <HashDisplay label="コミット" value={run.commit_sha} />
             <ActorLabel kind={run.author.kind} name={run.author.name} size="sm" />
             <EnforcementBadge level={run.enforcement} />
@@ -255,7 +335,8 @@ export function GateRunDetailScreen({ org, project, runId }: { org: string; proj
             <Button icon="refresh" loading={run.verdict === "running"} onClick={() => toast({ kind: "info", message: "ゲートの再実行を受け付けました" })}>再実行</Button>
             <MoreMenu
               items={[
-                { label: "GitHub で PR を開く", icon: "external" },
+                { label: `提供元で ${term} を開く`, icon: "external" },
+                { label: "判定を再現する", icon: "refresh", onClick: () => navigate(paths.gateReplay(org, project, run.id)) },
                 { label: "Evidence Manifest を見る", icon: "signature", onClick: () => navigate(paths.manifests(org, project)) },
                 { label: "判定結果を JSON で出力", icon: "download" },
               ]}

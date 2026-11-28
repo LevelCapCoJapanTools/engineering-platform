@@ -30,6 +30,14 @@ export function X01PortalHome({ project = PROJECT }: { project?: string }) {
             <Button variant="secondary" icon="plus" to={paths.portalChangeNew(project)}>変更要求を起票</Button>
           </div>
 
+          {state === "セッション切れ間近" ? (
+            <div className="banner tone-warn" role="status"><Icon name="clock" /><div className="banner-body"><div className="banner-title">あと 3 分でセッションが切れます</div><div>操作がないため、まもなく自動でサインアウトします。入力中の内容は保存されません。</div></div><Button size="sm">続ける</Button></div>
+          ) : null}
+          {state === "他の案件" ? (
+            <div className="banner tone-fail" role="alert"><Icon name="lock" /><div className="banner-body"><div className="banner-title">この案件は表示できません</div><div>顧客ポータルでは、あなたの会社が発注した案件だけを表示します。別の案件の担当でもある場合は、その案件の招待メールから参加してください。</div></div></div>
+          ) : null}
+          <p className="tiny muted row" style={{ ["--gap" as string]: "6px" }}><Icon name="lock" size={12} />表示されるのは、{p.customer} が発注した案件だけです。操作は記録され、30 分操作がないと自動でサインアウトします。</p>
+
           <section className="stack" style={{ ["--gap" as string]: "10px" }} aria-labelledby="pending-title">
             <div className="row between">
               <h2 id="pending-title" className="section-title">あなたの承認待ち</h2>

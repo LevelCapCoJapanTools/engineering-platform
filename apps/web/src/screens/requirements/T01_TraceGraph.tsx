@@ -22,10 +22,12 @@ import {
   Toggle,
   TraceGraph,
   TraceLegend,
-  TraceLinkEditor,
   useToast,
+  ExternalActor,
+  SourceTag,
 } from "../../ui";
-import { buildTraceGraph, linkCandidates, linksOf, org, project, reqPath, traceCoverage } from "./common";
+import { reqSource } from "../../mocks/requirements";
+import { buildTraceGraph, CHAIN_STAGES, ChainTable, chainOf, org, project, reqPath, traceCoverage, ViewOnlyNote } from "./common";
 
 function NodeDetail({ id }: { id: string }) {
   if (id.startsWith("missing-")) {
@@ -35,7 +37,8 @@ function NodeDetail({ id }: { id: string }) {
       <div className="stack" style={{ ["--gap" as string]: "10px" }}>
         <Tag tone="fail" icon="alertCircle">欠落</Tag>
         <p className="small">承認済みの要求 <IdLink id={reqId} to={reqPath(reqId)} /> に{isTest ? "テスト" : "設計"}へのリンクがありません。ゲートBでブロックされる原因になります。</p>
-        <TraceLinkEditor links={[]} candidates={linkCandidates.filter((c) => (isTest ? c.kind === "テスト" : c.kind !== "テスト" && c.kind !== "PR"))} />
+        <div className="small">対応する担当: <ExternalActor userId={isTest ? "u-ito" : "u-tanaka"} role={isTest ? "QA" : "設計者"} /></div>
+        <p className="tiny muted">リンクは担当者が正本（{isTest ? "テストコードの要求ID注記" : "trace/edges.yaml"}）で追加します。</p>
       </div>
     );
   }
@@ -45,7 +48,7 @@ function NodeDetail({ id }: { id: string }) {
       <div className="stack" style={{ ["--gap" as string]: "10px" }}>
         <div className="row"><IdLink id={req.id} to={reqPath(req.id)} /><StatusBadge vocab={ARTIFACT_STATUS[req.status]} size="sm" /></div>
         <span className="strong">{req.title}</span>
-        <TraceLinkEditor links={linksOf(req)} candidates={linkCandidates} />
+        <ChainTable links={chainOf(req)} />
       </div>
     );
   }
@@ -63,8 +66,7 @@ function NodeDetail({ id }: { id: string }) {
       </div>
       <span className="strong">{title}</span>
       <span className="label">つながっている要求（{related.length}）</span>
-      {related.length ? related.map((r) => <span key={r.id} className="row small"><IdLink id={r.id} to={reqPath(r.id)} />{r.title}</span>) : <span className="small muted">確定したリンクはありません（AI候補のみ）</span>}
-      <div><Button size="sm" icon="plus">リンクを追加</Button></div>
+      {related.length ? related.map((r) => <span key={r.id} className="row small"><IdLink id={r.id} to={reqPath(r.id)} />{r.title}</span>) : <span className="small muted">確定したリンクはありません（AI候補のみ）。成果物から要求への逆方向のリンクがない状態です</span>}
     </div>
   );
 }
@@ -129,7 +131,8 @@ export function TraceGraphScreen() {
     <ProjectLayout active="trace" trail={[{ label: "トレーサビリティ" }]}>
       <PageHeader
         title="トレーサビリティ"
-        description="要求から設計、コード（PR）、テストまでのつながりと欠落を確認します。点線は AI の候補で、確定するまで集計に含めません。"
+        description="要求から設計、コード（PR）、テスト、実行結果、検証・妥当性確認、リリース成果物までのつながりと欠落を確認します。点線は AI の候補で、確定するまで集計に含めません。"
+        meta={<SourceTag source={reqSource("trace/edges.yaml・CI レポート")} />}
         actions={
           <>
             <Button icon="list" to={paths.traceMatrix(org, project)}>表で見る</Button>
@@ -146,6 +149,8 @@ export function TraceGraphScreen() {
         </div>
         <div style={{ width: 280 }}><CoverageMeter value={noMissing ? cov.total : cov.linked} total={cov.total} label="承認済み要求のテストまでのトレース" /></div>
       </div>
+      {state === "loading" || state === "error" || state === "large" ? null : <ChainSummary />}
+      <ViewOnlyNote>リンクの追加・修正は担当者が正本で行います。ここでは同期したリンクと、その記録場所・確定者を確認します。</ViewOnlyNote>
       {state === "loading" ? (
         <Skeleton variant="detail" />
       ) : state === "error" ? (
@@ -188,5 +193,26 @@ export function TraceGraphScreen() {
         </div>
       )}
     </ProjectLayout>
+  );
+}
+
+/** 承認済み要求を基準にした、段ごとのつながり（SI-04） */
+function ChainSummary() {
+  const approved = requirements.filter((r) => r.status === "approved");
+  const counts = CHAIN_STAGES.map((st) => {
+    const linked = approved.filter((r) => chainOf(r).some((l) => l.stage === st && !l.ai)).length;
+    const aiOnly = approved.filter((r) => !chainOf(r).some((l) => l.stage === st && !l.ai) && chainOf(r).some((l) => l.stage === st && l.ai)).length;
+    return { st, linked, aiOnly };
+  });
+  return (
+    <div className="req-chain" aria-label="段ごとのつながり">
+      {counts.map((c, i) => (
+        <div key={c.st} className={c.linked < approved.length ? "cluster missing" : "cluster"}>
+          <span className="tiny muted">{i + 1}. {c.st}</span>
+          <span className="count">{c.linked}<span className="tiny muted"> / {approved.length}</span></span>
+          <span className="tiny muted">{c.aiOnly ? `AI候補のみ ${c.aiOnly}件` : c.linked < approved.length ? `未接続 ${approved.length - c.linked}件` : "すべて接続"}</span>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -55,7 +55,7 @@ export function P06Contact() {
               <strong className="strong">PoC の流れ</strong>
               {[
                 { t: "ヒアリング（1〜2週）", b: "現在の開発プロセスと成果物を整理します。" },
-                { t: "セットアップ（2週）", b: "GitHub App を導入し、警告モードで開始します。" },
+                { t: "セットアップ（2週）", b: "計画・カレンダーとコードホスティングを接続し、警告モードで開始します。" },
                 { t: "運用と評価（6〜8週）", b: "ゲートと証跡を運用し、誤ブロック率や準備時間を測ります。" },
                 { t: "振り返り", b: "結果をもとに本導入の範囲を決めます。" },
               ].map((s, i) => (
@@ -92,7 +92,7 @@ export function P06Contact() {
                 <div className="field">
                   <span className="field-label">使用している Git サービス</span>
                   <div className="row" style={{ ["--gap" as string]: "16px" }}>
-                    {[{ v: "github", l: "GitHub" }, { v: "gitlab", l: "GitLab" }, { v: "other", l: "その他" }].map((o) => <Radio key={o.v} name="git" value={o.v} label={o.l} checked={form.git === o.v} onChange={(v) => set("git", v)} />)}
+                    {[{ v: "github", l: "GitHub" }, { v: "gitlab", l: "GitLab" }, { v: "codecommit", l: "AWS CodeCommit" }, { v: "azure", l: "Azure Repos" }, { v: "other", l: "その他" }].map((o) => <Radio key={o.v} name="git" value={o.v} label={o.l} checked={form.git === o.v} onChange={(v) => set("git", v)} />)}
                   </div>
                 </div>
                 <div className="field">

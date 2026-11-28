@@ -1,22 +1,25 @@
-// 画面ID: A-08 メンバーの招待とロール割当（オンボーディング 5/7）
+// 画面ID: A-08 経営層の招待（オンボーディング 8/10）
+// 直接利用者（経営層・組織管理者・ポリシー管理者）だけを招待する。開発メンバーの招待は不要。
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
-import { paths } from "../../lib/paths";
 import { ROLES } from "../../lib/vocab";
 import type { Role } from "../../lib/vocab";
-import { Banner, Button, Combobox, OnboardingLayout, useToast } from "../../ui";
+import { Banner, Button, Combobox, useToast } from "../../ui";
+import { ExecOnboarding, SkipButton } from "./parts";
 
 type Row = { id: number; who: string; roles: Role[] };
 
 const INITIAL_WARN: Row[] = [
-  { id: 1, who: "takahashi@sample-soft.example", roles: ["アナリスト"] },
-  { id: 2, who: "ytanaka", roles: ["設計者"] },
-  { id: 3, who: "sho-w", roles: ["開発者", "リリース管理者"] },
-  { id: 4, who: "mito-qa", roles: ["QA"] },
+  { id: 1, who: "mori@sample-soft.example", roles: ["CTO", "ポリシー管理者"] },
+  { id: 2, who: "ishii@sample-soft.example", roles: ["事業部長"] },
 ];
-const INITIAL_OK: Row[] = [...INITIAL_WARN.slice(0, 2), { id: 3, who: "sho-w", roles: ["開発者"] }, INITIAL_WARN[3], { id: 5, who: "yui-yamamoto", roles: ["組織管理者", "ポリシー管理者"] }, { id: 6, who: "msato-dev", roles: ["PM", "リリース管理者"] }];
+const INITIAL_OK: Row[] = [
+  { id: 1, who: "mori@sample-soft.example", roles: ["CTO", "案件スポンサー"] },
+  { id: 2, who: "ishii@sample-soft.example", roles: ["事業部長"] },
+  { id: 3, who: "yamamoto@sample-soft.example", roles: ["組織管理者", "ポリシー管理者"] },
+];
 
-const roleOptions = ROLES.filter((r) => r.org === "開発会社").map((r) => ({ value: r.name, label: r.name, hint: r.ops }));
+const roleOptions = ROLES.filter((r) => r.audience === "direct").map((r) => ({ value: r.name, label: r.name, hint: r.ops }));
 
 export function Members() {
   const state = useScreenState();
@@ -24,41 +27,38 @@ export function Members() {
   const [rows, setRows] = useState<Row[]>(state === "ok" ? INITIAL_OK : INITIAL_WARN);
   const all = rows.flatMap((r) => r.roles);
   const warnings: string[] = [];
-  if (!all.includes("ポリシー管理者")) warnings.push("ポリシー管理者がいません。ゲートのルールや組織での調整を承認できる人が必要です。");
-  rows.filter((r) => r.roles.includes("リリース管理者") && r.roles.includes("開発者") && !r.roles.some((x) => x === "PM")).forEach((r) => warnings.push(`${r.who} に「開発者」と「リリース管理者」だけが割り当てられています。自分が実装した変更を自分でリリース承認する状態になります。`));
-  if (!all.includes("QA")) warnings.push("QA がいません。テスト結果と検証記録を承認する人が必要です。");
+  if (!all.includes("組織管理者")) warnings.push("組織管理者がいません。あなた（木村 達也）が組織管理者を兼ねます。連携や利用者の管理を任せる人を招待することをおすすめします。");
+  rows.filter((r) => r.roles.includes("CTO") && r.roles.includes("ポリシー管理者")).forEach((r) => warnings.push(`${r.who} に CTO（例外の判断）とポリシー管理者が割り当てられています。自分が変更したポリシーへの例外は、別の人が判断する必要があります。`));
   const empty = rows.some((r) => !r.who.trim() || r.roles.length === 0);
   return (
-    <OnboardingLayout
-      step={4}
-      title="メンバーを招待"
-      description="招待する人と、その人のロールを決めます。1人が複数のロールを持てます。顧客はプロジェクトの作成時に招待します。"
-      back={paths.onboardingProfile()}
-      next={paths.onboardingAi()}
+    <ExecOnboarding
+      step={7}
+      title="経営層を招待"
+      description="このサービスにサインインする人（役員、事業部長、案件スポンサー、組織管理者など）を招待します。PM・開発者・QA・顧客の招待は不要です。彼らの活動は接続したシステムの外部IDで記録します。"
       nextLabel="招待を送る"
       nextDisabled={empty}
       nextDisabledReason="空の行を埋めるか削除してください"
-      extra={<Button variant="ghost" to={paths.onboardingAi()}>あとで</Button>}
+      extra={<SkipButton step={7} />}
     >
       {warnings.length ? (
         <Banner tone="warn" title="職務分離の確認">
           <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
             {warnings.map((w) => <li key={w}>{w}</li>)}
           </ul>
-          <div className="tiny muted" style={{ marginTop: 6 }}>このまま進むこともできます。あとで「設定 › メンバーとロール」で変更できます。</div>
+          <div className="tiny muted" style={{ marginTop: 6 }}>このまま進むこともできます。あとで「設定 › 利用者とロール」で変更できます。</div>
         </Banner>
       ) : (
         <Banner tone="pass">職務分離の問題は見つかりませんでした。</Banner>
       )}
       <div className="stack" style={{ ["--gap" as string]: "10px" }}>
         <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) 36px", gap: 10 }}>
-          <span className="label">メールアドレスまたは GitHub ユーザー名</span>
+          <span className="label">メールアドレス</span>
           <span className="label">ロール</span>
           <span />
         </div>
         {rows.map((r) => (
           <div key={r.id} className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) 36px", gap: 10, alignItems: "start" }}>
-            <input className="input" aria-label="メールアドレスまたは GitHub ユーザー名" value={r.who} placeholder="name@example.com または GitHub ユーザー名" onChange={(e) => setRows((xs) => xs.map((x) => (x.id === r.id ? { ...x, who: e.target.value } : x)))} />
+            <input className="input" aria-label="メールアドレス" value={r.who} placeholder="name@example.com" onChange={(e) => setRows((xs) => xs.map((x) => (x.id === r.id ? { ...x, who: e.target.value } : x)))} />
             <Combobox multiple options={roleOptions} value={r.roles} onChange={(v) => setRows((xs) => xs.map((x) => (x.id === r.id ? { ...x, roles: v as Role[] } : x)))} placeholder="ロールを選択" />
             <Button variant="ghost" iconOnly icon="trash" label="この行を削除" onClick={() => { setRows((xs) => xs.filter((x) => x.id !== r.id)); toast({ kind: "info", message: "行を削除しました" }); }} />
           </div>
@@ -67,7 +67,8 @@ export function Members() {
           <Button size="sm" icon="plus" onClick={() => setRows((xs) => [...xs, { id: Date.now(), who: "", roles: [] }])}>行を追加</Button>
         </div>
       </div>
-      <p className="tiny muted">招待メールは7日間有効です。あなた（佐藤 美咲）には組織管理者のロールが付いています。</p>
-    </OnboardingLayout>
+      <Banner tone="info">閲覧範囲（事業部・顧客・案件・機密区分）と判断権限は役職から自動で付与しません。招待後に「設定 › 閲覧範囲と判断権限」で設定します。</Banner>
+      <p className="tiny muted">招待メールは7日間有効です。参加時に MFA の設定を求めます。あなた（木村 達也）には経営者と組織管理者のロールが付いています。</p>
+    </ExecOnboarding>
   );
 }

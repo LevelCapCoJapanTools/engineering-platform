@@ -135,6 +135,7 @@ import {
   users,
 } from "../../mocks/core";
 import "./catalog.css";
+import { SYNC_TOC, SyncParts } from "./CatalogSync";
 
 // ---------- 枠組み ----------
 type TocEntry = { id: string; label: string };
@@ -146,6 +147,7 @@ const TOC: { group: string; items: TocEntry[] }[] = [
   { group: "5.3 入力", items: ["Button", "TextField", "TextArea", "MarkdownEditor", "Select", "Combobox", "DatePicker", "Checkbox", "OptionCard", "FileUpload", "SearchBox", "FilterBar", "Tabs", "Pagination", "DataTable"].map((x) => ({ id: x, label: x === "Checkbox" ? "Checkbox / Radio / Toggle" : x })) },
   { group: "5.4 重ね表示", items: ["Modal", "ConfirmDialog", "Drawer", "Popover"].map((x) => ({ id: x, label: x === "Popover" ? "Popover / Menu" : x })) },
   { group: "5.5 業務", items: ["ApprovalPanel", "ApprovalRequestCard", "SoDNotice", "AIFindingCard", "AIDraftBanner", "AIUnavailableNotice", "TraceLinkEditor", "ExceptionSummary", "EvidenceItem", "CommentThread", "ShareLinkPanel", "PlanLimitNotice", "StateFlow"].map((x) => ({ id: x, label: x })) },
+  { group: "5.6 連携・経営", items: SYNC_TOC.map((x) => ({ id: x, label: x === "vocab-sync" ? "語彙（連携・経営）" : x })) },
 ];
 
 function Sec({ id, title, desc, children }: { id: string; title?: string; desc?: ReactNode; children: ReactNode }) {
@@ -957,7 +959,7 @@ export function Catalog() {
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <header className="global-header" style={{ gridTemplateColumns: "auto 1fr auto" }}>
         <Brand to={paths.screens()} />
-        <span className="small muted">部品カタログ · 第5章の全部品と全状態</span>
+        <span className="small muted">部品カタログ · 第5章の全部品と全状態（5.6 連携・経営を含む）</span>
         <div className="row">
           <Link to={paths.screens()} className="btn secondary sm">画面一覧</Link>
           <ThemeToggle />
@@ -986,6 +988,7 @@ export function Catalog() {
           <Inputs />
           <Overlays />
           <Domains />
+          <SyncParts />
         </main>
       </div>
     </div>

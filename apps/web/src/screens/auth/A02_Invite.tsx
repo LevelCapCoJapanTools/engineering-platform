@@ -49,7 +49,7 @@ export function Invite() {
       ) : null}
       {state === "otherAccount" ? (
         <Banner tone="warn" title="別のアカウントでサインインしています">
-          この招待は <span className="mono">kobayashi@sample-soft.example</span> 宛てです。現在 <span className="mono">msato-dev</span> でサインインしています。
+          この招待は <span className="mono">okada@sample-soft.example</span> 宛てです。現在 <span className="mono">kimura@sample-soft.example</span> でサインインしています。
           <div style={{ marginTop: 10 }}><Button size="sm" to={paths.signin()} icon="logout">サインアウトして切り替える</Button></div>
         </Banner>
       ) : null}
@@ -61,14 +61,14 @@ export function Invite() {
         </div>
         <KeyValueList
           items={[
-            { label: "付与されるロール", value: customer ? <RoleBadge role="顧客" /> : <span className="row"><RoleBadge role="開発者" /></span> },
+            { label: "付与されるロール", value: customer ? <RoleBadge role="顧客" /> : <span className="row"><RoleBadge role="事業責任者" /></span> },
             ...(customer
               ? [
                   { label: "対象プロジェクト", value: project.name },
                   { label: "閲覧できる範囲", value: <span className="small">このプロジェクトの承認依頼、進捗の要約、リリースのみ</span> },
                 ]
-              : [{ label: "対象", value: "組織のすべてのプロジェクト（ロールの範囲内）" }]),
-            { label: "招待先", value: <span className="mono small">{customer ? "nakamura@kakuu-shoji.example" : "kobayashi@sample-soft.example"}</span> },
+              : [{ label: "閲覧範囲", value: <span className="small">自社サービス事業・在庫管理ダッシュボード（機密区分 Internal まで）</span> }, { label: "判断権限", value: <span className="small">便益の確認、予算の追加 50 万円まで</span> }]),
+            { label: "招待先", value: <span className="mono small">{customer ? "nakamura@kakuu-shoji.example" : "okada@sample-soft.example"}</span> },
             { label: "有効期限", value: state === "expired" ? <span className="text-fail">2026-11-20（期限切れ）</span> : "2026-12-04" },
           ]}
         />
@@ -80,7 +80,7 @@ export function Invite() {
           <Button variant="ghost" size="lg" onClick={() => setDeclineOpen(true)}>辞退する</Button>
         </div>
       )}
-      <p className="tiny muted">参加すると、組織の管理者があなたの名前、メールアドレス、操作の記録を閲覧できます。</p>
+      <p className="tiny muted">参加時に MFA の設定を求めます。参加すると、組織の管理者があなたの名前、メールアドレス、操作の記録を閲覧できます。{customer ? "顧客の方は、アカウントを作らずに期限付きの承認リンクで承認することもできます。" : ""}</p>
       <UserChip user={inviter} role="招待者" />
 
       <ConfirmDialog open={declineOpen} onClose={() => setDeclineOpen(false)} onConfirm={() => setDeclined(true)} title="招待を辞退しますか？" message="辞退すると、この招待リンクは使えなくなります。参加するには再度招待を受ける必要があります。" confirmLabel="辞退する" />

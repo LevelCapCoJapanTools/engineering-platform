@@ -1,9 +1,9 @@
-// 画面ID: A-07 プロファイルとゲートの設定（オンボーディング 4/7）
+// 画面ID: A-07 プロファイルとゲートの設定（オンボーディング 6/10）
 import { useState } from "react";
-import { paths } from "../../lib/paths";
 import { ENFORCEMENT_LEVEL } from "../../lib/vocab";
 import type { EnforcementLevel } from "../../lib/vocab";
-import { Banner, Field, Icon, OnboardingLayout, OptionCard, PolicyVersionTag, Tag, Toggle } from "../../ui";
+import { Banner, Field, Icon, OptionCard, PolicyVersionTag, Tag, Toggle } from "../../ui";
+import { ExecOnboarding } from "./parts";
 
 const PREVIEW: Record<EnforcementLevel, string> = {
   warnOnly: "PR のチェックは常に成功になり、問題は「警告」として PR に表示されます。開発は止まりません。",
@@ -15,7 +15,7 @@ export function Profile() {
   const [level, setLevel] = useState<EnforcementLevel>("warnOnly");
   const [required, setRequired] = useState(true);
   return (
-    <OnboardingLayout step={3} title="プロファイルとゲートの設定" description="ゲートで確認する統制項目のセットと、どの程度強制するかを決めます。" back={paths.onboardingRepos()} next={paths.onboardingMembers()}>
+    <ExecOnboarding step={5} title="プロファイルとゲートの設定" description="確認する統制項目のセット（Control Pack）と、ゲートをどの程度強制するかを決めます。プロジェクトの開始時に版を固定し、意図せず更新されません。">
       <Field label="対象プロファイル">
         <div className="stack" style={{ ["--gap" as string]: "8px" }}>
           <OptionCard name="profile" value="basic" checked onChange={() => undefined} title="Basic（ソフトウェア開発）" description="単一チームで単一製品を開発する、小規模な受託開発向け。プロジェクト管理と実装のプロセスを対象にします。" badge={<Tag tone="primary" square>選択済み</Tag>} />
@@ -48,8 +48,8 @@ export function Profile() {
         <span className="small muted">{PREVIEW[level]}</span>
       </div>
 
-      <Toggle label="GitHub の必須ステータスチェックに登録する" checked={required} onChange={setRequired} description="ブランチ保護ルールで「Product Name / Gate」を必須にします。登録しないと、ゲートが失敗してもマージできてしまいます。" />
+      <Toggle label="コードホスティングの必須チェックに登録する" checked={required} onChange={setRequired} description="GitHub の必須ステータスチェック、GitLab の External Status Check、Azure Repos のブランチポリシー、CodeCommit の承認ルールなど、接続先の仕組みで必須にします。登録しないと、ゲートが失敗してもマージできてしまいます。" />
       {!required ? <Banner tone="warn">必須チェックに登録しない場合、ゲートの結果は参考表示になります。</Banner> : null}
-    </OnboardingLayout>
+    </ExecOnboarding>
   );
 }

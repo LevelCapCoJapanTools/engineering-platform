@@ -1,96 +1,69 @@
-// 画面ID: O-02 承認待ち（受信箱）
+// 画面ID: O-02 経営判断（受信箱）
+// 経営層が判断すべき項目を、期限・影響額・重大度の順に並べる。
+// PM 等が行う実務の承認（要求・設計・例外など）は「参照のみ」として分けて示す。
+import "../executive/executive.css";
 import { useMemo, useState } from "react";
-import { useScreenState, useRoute } from "../../lib/router";
+import { useRoute, useScreenState } from "../../lib/router";
 import { ORG, paths } from "../../lib/paths";
 import { APPROVAL_KIND } from "../../lib/types";
-import type { ApprovalKind, ApprovalRequest, Approver } from "../../lib/types";
+import type { ApprovalKind, Decision } from "../../lib/types";
 import type { Role } from "../../lib/vocab";
-import { AppLayout, ApprovalPanel, ApprovalRequestCard, Button, crumbs, DeadlineIndicator, Drawer, EmptyState, ErrorState, FilterBar, KeyValueList, MarkdownViewer, PageHeader, Skeleton, Tabs, Tag, Timestamp, UserChip, useToast } from "../../ui";
-import { approvalRequests, changes, exceptions, requirements, userById } from "../../mocks/core";
-import { daysUntil } from "../../lib/format";
+import { approvalRequests, userById } from "../../mocks/core";
+import { decisions } from "../../mocks/portfolio";
+import { DECISION_KIND, delegatedDecisions, sortDecisions } from "../../mocks/executive";
+import { AppLayout, Button, crumbs, DataTable, DeadlineIndicator, EmptyState, ErrorState, ExternalActor, FilterBar, Modal, PageHeader, Section, Skeleton, Tabs, Tag, TextArea, useToast } from "../../ui";
+import { DecisionCard } from "../executive/parts";
 
-const TAB_KINDS: (ApprovalKind | "all")[] = ["all", "requirement", "design", "change", "exception", "release", "acceptance", "tailoring"];
+type TabKey = "pending" | "delegated" | "decided";
 
-function roleFor(kind: ApprovalKind): Role {
-  return kind === "release" ? "リリース管理者" : kind === "design" ? "設計者" : kind === "verification" ? "QA" : kind === "tailoring" ? "ポリシー管理者" : "PM";
-}
-
-function Body({ req }: { req: ApprovalRequest }) {
-  if (req.kind === "exception") {
-    const ex = exceptions.find((e) => e.id === req.target_id) ?? exceptions[0];
-    return (
-      <KeyValueList
-        items={[
-          { label: "対象", value: <span className="mono small">{ex.target}</span> },
-          { label: "ルール", value: <span className="mono small">ゲート{ex.gate} · {ex.rule_id}</span> },
-          { label: "理由", value: ex.reason },
-          { label: "リスク", value: ex.risk },
-          { label: "代替の対策", value: ex.mitigation ?? <span className="muted">記載なし</span> },
-          { label: "期限", value: <DeadlineIndicator date={ex.expires_at} /> },
-        ]}
-      />
-    );
-  }
-  if (req.kind === "requirement") {
-    const r = requirements.find((x) => x.id === req.target_id) ?? requirements[0];
-    return (
-      <div className="stack" style={{ ["--gap" as string]: "10px" }}>
-        <MarkdownViewer source={r.body} />
-        <div className="stack" style={{ ["--gap" as string]: "4px" }}>
-          <span className="label">受入基準</span>
-          {r.acceptance_criteria.length ? (
-            <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{r.acceptance_criteria.map((a) => <li key={a}>{a}</li>)}</ul>
-          ) : (
-            <span className="small text-warn">受入基準がありません</span>
-          )}
-        </div>
-        <KeyValueList items={[{ label: "出典", value: r.source }, { label: "版", value: `v${r.version}` }]} />
-      </div>
-    );
-  }
-  if (req.kind === "change") {
-    const c = changes.find((x) => x.id === req.target_id) ?? changes[0];
-    return <KeyValueList items={[{ label: "変更内容", value: c.title }, { label: "起票者", value: <UserChip user={userById(c.filed_by)} /> }, { label: "影響範囲", value: `${c.impact_count}件（要求・設計・テスト）` }, { label: "起票日時", value: <Timestamp at={c.filed_at} mode="absolute" /> }]} />;
-  }
-  return <p className="small muted">{APPROVAL_KIND[req.kind]}の内容は詳細画面で確認できます。</p>;
+function actorRoleFor(kind: ApprovalKind): Role {
+  return kind === "release" ? "リリース管理者" : kind === "design" ? "設計者" : kind === "verification" ? "QA" : kind === "tailoring" ? "ポリシー管理者" : kind === "acceptance" ? "顧客" : "PM";
 }
 
 export function Inbox() {
   const state = useScreenState();
   const toast = useToast();
   const org = useRoute().params.org ?? ORG;
-  const [tab, setTab] = useState<string>("all");
+  const [tab, setTab] = useState<TabKey>("pending");
   const [filters, setFilters] = useState<Record<string, string>>({});
-  const [open, setOpen] = useState<ApprovalRequest | null>(null);
-  const [done, setDone] = useState<string[]>([]);
-  const base = state === "empty" ? [] : approvalRequests.filter((r) => !done.includes(r.id));
-  const list = useMemo(
-    () =>
-      base.filter((r) => (tab === "all" || r.kind === tab) && (!filters.project || r.project_slug === filters.project) && (!filters.due || (filters.due === "overdue" ? daysUntil(r.due_at) < 0 : daysUntil(r.due_at) <= 3))),
-    [base, tab, filters],
-  );
-  const detailPath = (r: ApprovalRequest) => {
-    const p = r.project_slug;
-    switch (r.kind) {
-      case "exception": return paths.exception(org, p, r.target_id);
-      case "change": return paths.change(org, p, r.target_id);
-      case "requirement": return paths.requirement(org, p, r.target_id);
-      case "design": return paths.design(org, p, r.target_id);
-      case "release": return paths.release(org, p, r.target_id);
-      default: return paths.project(org, p);
-    }
+  const [routing, setRouting] = useState<Decision | null>(null);
+  const [routeNote, setRouteNote] = useState("");
+  const [routed, setRouted] = useState<string[]>([]);
+
+  const empty = state === "empty";
+  const all: Decision[] = empty ? [] : [...decisions, ...delegatedDecisions];
+  const byTab: Record<TabKey, Decision[]> = {
+    pending: sortDecisions(all.filter((d) => d.status === "pending" && !routed.includes(d.id))),
+    delegated: sortDecisions([...all.filter((d) => d.status === "delegated"), ...all.filter((d) => routed.includes(d.id)).map((d) => ({ ...d, status: "delegated" as const }))]),
+    decided: [...all.filter((d) => ["approved", "conditional", "rejected", "onHold"].includes(d.status))].sort((a, b) => (b.decided_at ?? "").localeCompare(a.decided_at ?? "")),
   };
-  const self = open ? open.requester_id === "u-sato" : false;
-  const approvers: Approver[] = open ? [{ role: roleFor(open.kind), user_id: "u-sato", status: "pending" }] : [];
+  const list = useMemo(
+    () => byTab[tab].filter((d) => (!filters.kind || d.kind === filters.kind) && (!filters.project || (filters.project === "org" ? !d.project : d.project === filters.project))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tab, filters, routed, state],
+  );
+  const practical = empty ? [] : approvalRequests;
 
   return (
-    <AppLayout org={org} active="inbox" breadcrumb={crumbs(org, undefined, { label: "承認待ち" })}>
-      <PageHeader title="承認待ち" description="あなたが判断する必要がある項目です。カードを押すと、その場で内容を確認して承認・差戻しできます。" />
-      <Tabs value={tab} onChange={setTab} tabs={TAB_KINDS.map((k) => ({ value: k, label: k === "all" ? "すべて" : APPROVAL_KIND[k], count: base.filter((r) => k === "all" || r.kind === k).length }))} />
+    <AppLayout org={org} active="inbox" breadcrumb={crumbs(org, undefined, { label: "経営判断" })}>
+      <PageHeader
+        title="経営判断"
+        description="経営層が判断すべき項目です。期限・影響額・重大度の順に並びます。実務上の承認者が別にいる項目は、その人へ回付できます。"
+        actions={<Button icon="history" to={paths.decisions(org)}>判断ログ</Button>}
+      />
+      <Tabs
+        value={tab}
+        onChange={(v) => setTab(v as TabKey)}
+        tabs={[
+          { value: "pending", label: "判断待ち", count: byTab.pending.length },
+          { value: "delegated", label: "担当者へ回付済み", count: byTab.delegated.length },
+          { value: "decided", label: "判断済み", count: byTab.decided.length },
+        ]}
+      />
       <FilterBar
         filters={[
-          { key: "project", label: "プロジェクト", options: [{ value: "order-renewal", label: "受発注システム刷新" }, { value: "inventory-dashboard", label: "在庫管理ダッシュボード" }] },
-          { key: "due", label: "期限", options: [{ value: "overdue", label: "期限超過" }, { value: "soon", label: "3日以内" }] },
+          { key: "kind", label: "種類", options: Object.entries(DECISION_KIND).map(([value, label]) => ({ value, label })) },
+          { key: "project", label: "案件", options: [{ value: "order-renewal", label: "受発注システム刷新" }, { value: "member-app-api", label: "会員アプリ API 開発" }, { value: "legacy-migration", label: "旧基幹データ移行" }, { value: "org", label: "組織全体（案件なし）" }] },
         ]}
         values={filters}
         onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
@@ -101,42 +74,87 @@ export function Inbox() {
         <ErrorState />
       ) : list.length === 0 ? (
         <div className="card">
-          {base.length === 0 ? (
-            <EmptyState icon="checkCircle" title="承認待ちはありません" description="新しい承認依頼が届くと、ここと通知に表示されます。" />
+          {byTab[tab].length === 0 ? (
+            <EmptyState icon="checkCircle" title={tab === "pending" ? "判断待ちはありません" : "該当する判断はありません"} description="新しい判断の依頼が届くと、ここと通知（チャット・メール）に表示されます。" />
           ) : (
-            <EmptyState variant="filtered" title="条件に合う承認待ちはありません" description="タブや絞り込み条件を変更してください。" action={<Button size="sm" onClick={() => { setTab("all"); setFilters({}); }}>条件をクリア</Button>} />
+            <EmptyState variant="filtered" title="条件に合う判断はありません" description="絞り込み条件を変更してください。" action={<Button size="sm" onClick={() => setFilters({})}>条件をクリア</Button>} />
           )}
         </div>
       ) : (
         <div className="grid cols-2">
-          {list.map((r) => <ApprovalRequestCard key={r.id} req={r} onOpen={() => setOpen(r)} />)}
+          {list.map((d) => (
+            <DecisionCard
+              key={d.id}
+              org={org}
+              d={d}
+              footer={
+                <div className="row end" style={{ ["--gap" as string]: "8px" }}>
+                  {tab === "pending" && d.practical_approver ? (
+                    <Button size="sm" icon="route" onClick={() => { setRouting(d); setRouteNote(""); }}>正しい承認者へ回付</Button>
+                  ) : null}
+                  {tab === "delegated" ? <span className="tiny muted">回付先: {d.practical_approver ?? "—"}</span> : null}
+                  <Button size="sm" variant={tab === "pending" ? "primary" : "secondary"} to={paths.decision(org, d.id)}>{tab === "pending" ? "内容を確認して判断" : "記録を見る"}</Button>
+                </div>
+              }
+            />
+          ))}
         </div>
       )}
 
-      <Drawer
-        open={Boolean(open)}
-        onClose={() => setOpen(null)}
-        width={720}
-        title={open ? <span className="row"><Tag tone="primary" square>{APPROVAL_KIND[open.kind]}</Tag><span className="id-link">{open.target_id}</span>{open.title}</span> : ""}
-        subtitle={open ? <span className="row">{open.project_name} · 依頼者 <UserChip user={userById(open.requester_id)} plain /> · <Timestamp at={open.requested_at} /> · <DeadlineIndicator date={open.due_at} /></span> : null}
-        footer={open ? <Button variant="ghost" icon="external" to={detailPath(open)}>詳細画面を開く</Button> : null}
-      >
-        {open ? (
-          <div className="stack">
-            <section className="card tight"><Body req={open} /></section>
-            <ApprovalPanel
-              approvers={approvers}
-              canDecide={!self}
-              blockedReason={self ? "あなたはこの項目の依頼者のため承認できません" : undefined}
-              onDecide={(d) => {
-                toast({ kind: "success", message: d === "approved" ? `${open.target_id} を承認しました` : `${open.target_id} を差し戻しました`, undo: () => setDone((x) => x.filter((y) => y !== open.id)) });
-                setDone((x) => [...x, open.id]);
-                setOpen(null);
-              }}
+      {state === "loading" || state === "error" ? null : (
+        <Section title="実務の承認状況（参照のみ）" sub="要求・設計・例外・リリースなどの承認は、担当者が既存のツールや期限付きの承認リンクで行います。ここでは状況だけを確認できます">
+          {practical.length === 0 ? (
+            <p className="small muted">進行中の実務の承認はありません。</p>
+          ) : (
+            <DataTable
+              bare
+              compact
+              rows={practical}
+              rowKey={(r) => r.id}
+              columns={[
+                { key: "kind", header: "種類", render: (r) => <Tag square>{APPROVAL_KIND[r.kind]}</Tag> },
+                { key: "title", header: "内容", render: (r) => <span className="stack" style={{ ["--gap" as string]: "2px" }}><span className="small strong">{r.title}</span><span className="tiny muted">{r.project_name}</span></span>, hideable: false },
+                { key: "approver", header: "承認する人", render: (r) => <Tag square>{actorRoleFor(r.kind)}</Tag> },
+                { key: "requester", header: "依頼者", render: (r) => { const u = userById(r.requester_id); return u ? <ExternalActor userId={u.id} role={u.roles.join("・")} /> : "—"; } },
+                { key: "due", header: "期限", render: (r) => <DeadlineIndicator date={r.due_at} />, sortValue: (r) => r.due_at },
+              ]}
             />
+          )}
+        </Section>
+      )}
+
+      <Modal
+        open={routing !== null}
+        onClose={() => setRouting(null)}
+        title="正しい承認者へ回付"
+        description="この判断は実務上の承認者の合意が必要です。回付すると、経営判断の受信箱からは「回付済み」に移り、回付の記録が監査記録に残ります。"
+        footer={
+          <>
+            <Button onClick={() => setRouting(null)}>キャンセル</Button>
+            <Button
+              variant="primary"
+              icon="send"
+              disabled={!routeNote.trim()}
+              disabledReason="回付の理由を入力してください"
+              onClick={() => {
+                if (routing) setRouted((r) => [...r, routing.id]);
+                setRouting(null);
+                toast({ kind: "success", message: "回付しました。承認者に期限付きの承認リンクと通知を送りました" });
+              }}
+            >
+              回付する
+            </Button>
+          </>
+        }
+      >
+        {routing ? (
+          <div className="stack">
+            <div className="small"><span className="muted">対象: </span>{routing.title}</div>
+            <div className="exec-route-note small">回付先: {routing.practical_approver}</div>
+            <TextArea label="回付の理由" required rows={3} value={routeNote} onChange={setRouteNote} placeholder="例: 顧客への説明は PM と顧客の合意事項のため" />
           </div>
         ) : null}
-      </Drawer>
+      </Modal>
     </AppLayout>
   );
 }

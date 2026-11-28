@@ -1,123 +1,74 @@
-// 画面ID: R-02 要求の詳細・編集
+// 画面ID: R-02 要求の詳細
+// 要求の正本は Git リポジトリ（docs/requirements）。この画面は同期した内容・状態遷移・承認記録を閲覧する。
+// 経営層は作成・レビュー・承認を代行しない。承認は承認者本人が正本または期限付き承認リンクで行う。
 import { useState } from "react";
 import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
-import type { Requirement } from "../../lib/types";
+import type { Approver, Requirement } from "../../lib/types";
 import { ARTIFACT_STATUS } from "../../lib/vocab";
-import { aiFindings, requirementById, requirements, userById, users } from "../../mocks/core";
-import { requirementComments, requirementHistory } from "../../mocks/requirements";
+import { aiFindings, requirementById, requirements, userById } from "../../mocks/core";
+import { requirementComments } from "../../mocks/requirements";
 import {
-  AIDraftBanner,
   ApprovalPanel,
   Banner,
   Button,
-  Combobox,
   CommentThread,
-  ConfirmDialog,
   DataClassBadge,
   DetailLayout,
-  DiffViewer,
   ErrorState,
+  ExternalActor,
   Icon,
   IdLink,
   KeyValueList,
-  MarkdownEditor,
   MarkdownViewer,
-  membersWithRole,
   MetaSection,
-  MoreMenu,
   PageHeader,
   ProjectLayout,
-  Segmented,
-  Select,
   Skeleton,
+  SoDNotice,
+  SourceTag,
+  StaleDataNotice,
   StateFlow,
   StatusBadge,
   Tabs,
   Tag,
-  TextField,
   Timeline,
   Timestamp,
-  TraceLinkEditor,
-  useToast,
-  UserChip,
 } from "../../ui";
-import type { Approver } from "../../lib/types";
 import { AiReviewPanel } from "./R03_AiReview";
-import { ARTIFACT_FLOW_LABEL, KIND_LABEL, linkCandidates, linksOf, org, PriorityTag, project, reqPath, requirementCandidates } from "./common";
+import {
+  ApprovalRecords,
+  ApprovedPin,
+  ARTIFACT_FLOW_LABEL,
+  ChainTable,
+  chainOf,
+  KIND_LABEL,
+  OpenInSource,
+  org,
+  PriorityTag,
+  project,
+  reqFile,
+  reqMeta,
+  reqPath,
+  reqSourceOf,
+  versionsOf,
+  ViewOnlyNote,
+} from "./common";
 
-const NEW_REQ: Requirement = {
-  id: "REQ-0013",
-  title: "",
-  kind: "functional",
-  priority: "medium",
-  status: "draft",
-  owner_id: "u-takahashi",
-  body: "",
-  acceptance_criteria: [""],
-  source: "",
-  design_ids: [],
-  pr_numbers: [],
-  test_ids: [],
-  ai_open_findings: 0,
-  version: 1,
-  updated_at: "2026-11-27T10:30:00+09:00",
-  data_class: "confidential",
-};
-
-const AI_DRAFT_BODY = "購買担当者は、納期を過ぎた発注をダッシュボードの先頭に赤色の帯で表示し、件数をバッジで示す。\n\n- 対象: 状態が「発注済み」で納期が本日より前の発注\n- 並び順: 納期の古い順";
-
-function approversOf(r: Requirement): Approver[] {
-  if (r.status === "approved") {
-    return [
-      { role: "顧客", user_id: "u-nakamura", status: "approved", decided_at: "2026-10-22T15:00:00+09:00", comment: "内容を確認しました。" },
-      { role: "PM", user_id: "u-sato", status: "approved", decided_at: "2026-10-22T11:00:00+09:00" },
-    ];
-  }
-  if (r.status === "pending") {
-    return [
-      { role: "PM", user_id: "u-sato", status: "pending" },
-      { role: "顧客", user_id: "u-nakamura", status: "pending" },
-    ];
-  }
-  return [
-    { role: "PM", user_id: "u-sato", status: "draft" },
-    { role: "顧客", user_id: "u-nakamura", status: "draft" },
-  ];
+/** 状態ごとの見本 */
+function pick(id: string, state: string): Requirement {
+  if (state === "approved") return requirementById("REQ-0001");
+  if (state === "changing") return requirementById("REQ-0008");
+  if (state === "pendingApproval" || state === "sod") return requirementById("REQ-0012");
+  if (state === "returned") return requirementById("REQ-0005");
+  if (state === "obsolete") return requirementById("REQ-0011");
+  return requirements.find((r) => r.id === id) ?? requirementById("REQ-0007");
 }
-
-const NEXT_STATUS: Partial<Record<Requirement["status"], { label: string; to: Requirement["status"] }>> = {
-  draft: { label: "レビューに出す", to: "inReview" },
-  inReview: { label: "承認を依頼", to: "pending" },
-  changing: { label: "再承認を依頼", to: "pending" },
-};
 
 export function RequirementDetail({ id }: { id: string }) {
   const state = useScreenState();
-  const toast = useToast();
-  const isNew = id === "new" || state === "new";
-  const base = isNew
-    ? NEW_REQ
-    : state === "approvedEdit"
-      ? requirementById("REQ-0001")
-      : state === "aiDraft"
-        ? requirementById("REQ-0010")
-        : state === "pendingApproval" || state === "sod"
-          ? requirementById("REQ-0012")
-        : requirements.find((r) => r.id === id) ?? requirementById("REQ-0007");
-  const [req, setReq] = useState<Requirement>(base);
-  const [editing, setEditing] = useState(isNew || state === "editing" || state === "aiDraft");
-  const [approvedNotice, setApprovedNotice] = useState(state === "approvedEdit");
-  const [aiDraft, setAiDraft] = useState(state === "aiDraft");
-  const [body, setBody] = useState(state === "aiDraft" ? AI_DRAFT_BODY : base.body);
-  const [title, setTitle] = useState(base.title);
-  const [criteria, setCriteria] = useState<string[]>(base.acceptance_criteria.length ? base.acceptance_criteria : [""]);
-  const [dirty, setDirty] = useState(false);
-  const [tab, setTab] = useState("content");
-  const [leaveOpen, setLeaveOpen] = useState(false);
-  const [obsoleteOpen, setObsoleteOpen] = useState(false);
-  const [diffVersion, setDiffVersion] = useState("prev");
-  const [titleError, setTitleError] = useState("");
+  const req = pick(id, state);
+  const [tab, setTab] = useState(state === "sod" || state === "returned" ? "approvals" : "content");
 
   if (state === "loading") {
     return (
@@ -134,194 +85,138 @@ export function RequirementDetail({ id }: { id: string }) {
     );
   }
 
+  const meta = reqMeta(req);
   const findings = aiFindings.filter((f) => f.target_id === req.id);
   const openFindings = findings.filter((f) => f.status === "unconfirmed").length;
-  const history = requirementHistory[req.id] ?? [{ version: req.version, at: req.updated_at, by: req.owner_id, note: "作成", body: req.body }];
-  const prev = history.length > 1 ? history[history.length - 2] : undefined;
-  const isOwner = state === "sod" || req.owner_id === "u-sato";
-  const next = NEXT_STATUS[req.status];
-
-  const startEdit = () => {
-    if (req.status === "approved") setApprovedNotice(true);
-    setEditing(true);
-  };
-  const save = () => {
-    if (!title.trim()) {
-      setTitleError("タイトルを入力してください");
-      return;
-    }
-    setReq((r) => ({ ...r, title, body, acceptance_criteria: criteria.filter((c) => c.trim()), status: r.status === "approved" ? "changing" : r.status, version: r.status === "approved" ? r.version + 1 : r.version }));
-    setEditing(false);
-    setDirty(false);
-    setAiDraft(false);
-    toast({ kind: "success", message: isNew ? `${req.id} を作成しました` : req.status === "approved" ? `${req.id} を保存し、状態を「変更中」に戻しました` : `${req.id} を保存しました` });
-  };
-  const mark = () => setDirty(true);
-
-  const trail = [{ label: "要求", to: paths.requirements(org, project) }, { label: isNew ? "新規作成" : req.id }];
-
-  const contentEdit = (
-    <div className="card stack">
-      {aiDraft ? <AIDraftBanner /> : null}
-      <TextField label="タイトル" required value={title} onChange={(v) => { setTitle(v); setTitleError(""); mark(); }} maxLength={80} placeholder="例: 取引先ごとに発注書を作成できる" error={titleError || undefined} />
-      <MarkdownEditor
-        label="本文"
-        required
-        value={body}
-        onChange={(v) => { setBody(v); mark(); }}
-        suggestions={[...requirementCandidates, ...linkCandidates.filter((c) => !c.id.startsWith("PR"))].map((c) => ({ id: c.id, title: c.title }))}
-        aiDraft={aiDraft}
-        onAiDraft={() => { setBody(AI_DRAFT_BODY); setAiDraft(true); mark(); }}
-        minHeight={160}
-      />
-      <div className="field">
-        <span className="field-label">受入基準 <span className="tiny muted">（並べ替え・追加・削除できます）</span></span>
-        <ol className="criteria-list">
-          {criteria.map((c, i) => (
-            <li key={i}>
-              <span className="num">{i + 1}</span>
-              <input value={c} placeholder="検証可能な条件を1つ書く" onChange={(e) => { const next2 = [...criteria]; next2[i] = e.target.value; setCriteria(next2); mark(); }} aria-label={`受入基準 ${i + 1}`} />
-              <span className="row nowrap" style={{ ["--gap" as string]: "2px" }}>
-                <Button size="sm" variant="ghost" iconOnly icon="chevronUp" label="上へ" disabled={i === 0} onClick={() => { const n = [...criteria]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setCriteria(n); mark(); }} />
-                <Button size="sm" variant="ghost" iconOnly icon="chevronDown" label="下へ" disabled={i === criteria.length - 1} onClick={() => { const n = [...criteria]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; setCriteria(n); mark(); }} />
-                <Button size="sm" variant="ghost" iconOnly icon="trash" label="削除" disabled={criteria.length === 1} onClick={() => { setCriteria(criteria.filter((_, j) => j !== i)); mark(); }} />
-              </span>
-            </li>
-          ))}
-        </ol>
-        <div><Button size="sm" icon="plus" onClick={() => { setCriteria([...criteria, ""]); mark(); }}>受入基準を追加</Button></div>
-      </div>
-      <div className="grid cols-3">
-        <Select label="種類" defaultValue={req.kind} options={[{ value: "functional", label: "機能" }, { value: "nonFunctional", label: "非機能" }]} onChange={mark} />
-        <Select label="優先度" defaultValue={req.priority} options={[{ value: "high", label: "高" }, { value: "medium", label: "中" }, { value: "low", label: "低" }]} onChange={mark} />
-        <Select label="出典" defaultValue={req.source || ""} placeholder="選択してください" options={[{ value: "SOW v2 §3.1", label: "SOW v2 §3.1" }, { value: "SOW v2 §3.3", label: "SOW v2 §3.3" }, { value: "CR-0003", label: "CR-0003（変更要求）" }, { value: "定例会 2026-11-20", label: "定例会 2026-11-20" }, ...(req.source && !["SOW v2 §3.1", "SOW v2 §3.3", "CR-0003", "定例会 2026-11-20"].includes(req.source) ? [{ value: req.source, label: req.source }] : [])]} onChange={mark} />
-      </div>
-      <div className="row end">
-        <Button variant="ghost" onClick={() => (dirty ? setLeaveOpen(true) : isNew ? navigate(paths.requirements(org, project)) : setEditing(false))}>キャンセル</Button>
-        <Button variant="primary" icon="check" onClick={save}>{isNew ? "作成する" : "保存する"}</Button>
-      </div>
-    </div>
-  );
-
-  const contentView = (
-    <div className="card stack">
-      <MarkdownViewer source={req.body} />
-      <div className="stack" style={{ ["--gap" as string]: "8px" }}>
-        <span className="label">受入基準</span>
-        {req.acceptance_criteria.length ? (
-          <ol className="criteria-list">
-            {req.acceptance_criteria.map((c, i) => (
-              <li key={i}><span className="num">{i + 1}</span><span>{c}</span><span /></li>
-            ))}
-          </ol>
-        ) : (
-          <Banner tone="warn" title="受入基準がありません">承認を依頼する前に、検証可能な受入基準を1件以上追加してください。</Banner>
-        )}
-      </div>
-      <KeyValueList
-        cols={2}
-        items={[
-          { label: "種類", value: <Tag square>{KIND_LABEL[req.kind]}</Tag> },
-          { label: "優先度", value: <PriorityTag value={req.priority} /> },
-          { label: "出典", value: req.source.split(" / ").map((s) => (s.startsWith("CR-") ? <IdLink key={s} id={s} to={paths.change(org, project, s)} /> : <span key={s}>{s} </span>)) },
-          { label: "版", value: `v${req.version}` },
-        ]}
-      />
-    </div>
-  );
-
-  const links = linksOf(req);
+  const versions = versionsOf(req);
+  const links = chainOf(req);
+  const current = meta.approvals.filter((a) => a.version === req.version);
+  const panelApprovers: Approver[] = current.filter((a) => a.status !== "invalid").map((a) => ({ role: a.role, user_id: a.user_id, status: a.status === "returned" ? "returned" : a.status === "approved" ? "approved" : "pending", decided_at: a.at, comment: a.comment }));
+  const invalid = meta.approvals.filter((a) => a.status === "invalid");
+  const reapproval = meta.approved_version !== undefined && meta.approved_version !== req.version;
+  const source = state === "stale" ? { ...reqSourceOf(req), synced_at: "2026-11-26T18:00:00+09:00", status: "delayed" as const } : reqSourceOf(req);
+  const lastReturn = meta.transitions.filter((t) => t.via.includes("差戻し") || t.via.includes("変更を要求")).slice(-1)[0];
 
   return (
-    <ProjectLayout active="requirements" trail={trail}>
+    <ProjectLayout active="requirements" trail={[{ label: "要求", to: paths.requirements(org, project) }, { label: req.id }]}>
       <PageHeader
-        id={isNew ? undefined : req.id}
-        title={isNew ? "要求を作成" : req.title}
-        status={isNew ? undefined : <StatusBadge vocab={ARTIFACT_STATUS[req.status]} />}
-        meta={isNew ? undefined : <><span className="small muted">v{req.version} · 更新 <Timestamp at={req.updated_at} /></span>{openFindings ? <span className="ai-count">未確認のAI所見 {openFindings}</span> : null}</>}
+        id={req.id}
+        title={req.title}
+        status={<StatusBadge vocab={ARTIFACT_STATUS[req.status]} />}
+        meta={
+          <>
+            <span className="small muted">v{req.version}</span>
+            {meta.approved_version ? <Tag tone={reapproval ? "warn" : "pass"} square icon="lock">承認版 v{meta.approved_version}</Tag> : null}
+            {openFindings ? <span className="ai-count">未確認のAI所見 {openFindings}</span> : null}
+            <SourceTag source={source} />
+          </>
+        }
         actions={
-          isNew ? null : (
-            <>
-              {editing ? null : <Button icon="edit" onClick={startEdit} disabled={req.status === "obsolete"} disabledReason="廃止された要求は編集できません">編集</Button>}
-              <Button icon="sparkles" to={paths.requirementReview(org, project, req.id)}>AIでレビュー</Button>
-              {next && !editing ? (
-                <Button
-                  variant="primary"
-                  icon="arrowRight"
-                  disabled={next.to === "pending" && req.acceptance_criteria.length === 0}
-                  disabledReason="受入基準がないため承認を依頼できません"
-                  onClick={() => (next.to === "pending" ? navigate(`${paths.requirementApproval(org, project)}?ids=${req.id}`) : (setReq((r) => ({ ...r, status: next.to })), toast({ kind: "success", message: `状態を「${ARTIFACT_FLOW_LABEL[next.to]}」にしました` })))}
-                >
-                  {next.label}
-                </Button>
-              ) : null}
-              <MoreMenu
-                items={[
-                  { label: "リンクをコピー", icon: "link" },
-                  { label: "履歴を表示", icon: "history", onClick: () => setTab("history") },
-                  "separator",
-                  { label: "廃止する", icon: "trash", danger: true, disabled: req.status === "obsolete", onClick: () => setObsoleteOpen(true) },
-                ]}
-              />
-            </>
-          )
+          <>
+            <OpenInSource />
+            <Button icon="compare" to={paths.requirementDiff(org, project, req.id)} disabled={versions.length < 2} disabledReason="比較できる版がありません">版を比較</Button>
+            <Button icon="sparkles" to={paths.requirementReview(org, project, req.id)}>AIの所見</Button>
+            {req.status === "pending" || req.status === "changing" ? (
+              <Button variant="primary" icon="send" onClick={() => navigate(`${paths.requirementApproval(org, project)}?ids=${req.id}`)}>承認者に依頼</Button>
+            ) : null}
+          </>
         }
         tabs={
-          isNew ? undefined : (
-            <Tabs
-              value={tab}
-              onChange={setTab}
-              tabs={[
-                { value: "content", label: "内容" },
-                { value: "links", label: "関連", count: links.length },
-                { value: "ai", label: "AIレビュー", count: openFindings, icon: "sparkles" },
-                { value: "history", label: "履歴", count: history.length },
-                { value: "comments", label: "コメント", count: requirementComments.length },
-              ]}
-            />
-          )
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { value: "content", label: "内容" },
+              { value: "links", label: "トレース", count: links.length },
+              { value: "approvals", label: "承認と状態遷移", count: meta.approvals.length },
+              { value: "ai", label: "AIの所見", count: openFindings, icon: "sparkles" },
+              { value: "comments", label: "コメント", count: requirementComments.length },
+            ]}
+          />
         }
       />
-      {approvedNotice ? (
-        <Banner tone="warn" title="承認済みの要求を編集しています" onClose={() => setApprovedNotice(false)}>
-          保存すると状態が「変更中」に戻り、顧客の再承認が必要になります。関連する設計・テストへの影響も確認してください。
+      {state === "stale" ? <StaleDataNotice sources={[{ name: "要求の正本", source }]} /> : null}
+      {reapproval ? (
+        <Banner tone="warn" title={`承認版は v${meta.approved_version} のままです。v${req.version} は再承認待ちです`} action={<Button size="sm" to={paths.requirementDiff(org, project, req.id)}>差分を見る</Button>}>
+          設計・テスト・ゲートは承認版 v{meta.approved_version} を基準に扱います。v{meta.approved_version} の内容と承認記録は証跡として保持されています。
         </Banner>
+      ) : null}
+      {state === "returned" && lastReturn ? (
+        <Banner tone="fail" title="承認者から差し戻されました">
+          {lastReturn.note ?? "理由は承認記録を確認してください。"}（<Timestamp at={lastReturn.at} mode="absolute" />・{lastReturn.via}）。修正版で再依頼されています。
+        </Banner>
+      ) : null}
+      {req.status === "obsolete" ? <Banner tone="info" title="この要求は廃止されています">トレーサビリティの集計から外れています。リンクと承認記録は履歴として残っています。</Banner> : null}
+      {invalid.length ? (
+        <SoDNotice reason={<>作成者（<ExternalActor userId={req.owner_id} />）による承認が記録されましたが、作成者と承認者は別の人である必要があるため、承認として数えていません。</>} />
       ) : null}
       <DetailLayout
         main={
-          tab === "content" || isNew ? (
-            editing ? contentEdit : contentView
+          tab === "content" ? (
+            <div className="card stack">
+              <MarkdownViewer source={req.body} />
+              <div className="stack" style={{ ["--gap" as string]: "8px" }}>
+                <span className="label">受入基準</span>
+                {req.acceptance_criteria.length ? (
+                  <ol className="criteria-list">
+                    {req.acceptance_criteria.map((c, i) => (
+                      <li key={i}><span className="num">{i + 1}</span><span>{c}</span><span /></li>
+                    ))}
+                  </ol>
+                ) : (
+                  <Banner tone="warn" title="受入基準がありません">受入基準がない要求は承認を依頼できません。担当者が正本で追加します。</Banner>
+                )}
+              </div>
+              <KeyValueList
+                cols={2}
+                items={[
+                  { label: "種類", value: <Tag square>{KIND_LABEL[req.kind]}</Tag> },
+                  { label: "優先度", value: <PriorityTag value={req.priority} /> },
+                  { label: "出典", value: req.source.split(" / ").map((s) => (s.startsWith("CR-") ? <IdLink key={s} id={s} to={paths.change(org, project, s)} /> : <span key={s}>{s} </span>)) },
+                  { label: "版", value: `v${req.version}（版は ${versions.length} つ）` },
+                  { label: "正本ファイル", value: <span className="mono small">{reqFile(req.id)}</span> },
+                  { label: "関連する課題", value: meta.issue ? <span className="mono small">{meta.issue}</span> : <span className="muted">なし</span> },
+                ]}
+              />
+              <ViewOnlyNote />
+            </div>
           ) : tab === "links" ? (
             <div className="card stack">
               <div className="row between">
-                <span className="section-title">設計・コード・テストへのリンク</span>
+                <span className="section-title">要求から下流へのつながり</span>
                 <Button size="sm" variant="ghost" icon="trace" to={paths.trace(org, project)}>グラフで見る</Button>
               </div>
-              <TraceLinkEditor links={links} candidates={linkCandidates} onChange={() => toast({ kind: "success", message: "リンクを更新しました" })} />
+              <p className="small muted">設計・コード・テスト・実行結果・検証・妥当性確認・リリース成果物へのリンクと、その記録場所・確定者です。AI 候補は確定するまで集計に含めません。</p>
+              <ChainTable links={links} />
             </div>
-          ) : tab === "ai" ? (
-            <AiReviewPanel req={req} embedded />
-          ) : tab === "history" ? (
+          ) : tab === "approvals" ? (
             <div className="stack">
               <div className="card stack">
-                <div className="row between">
-                  <span className="section-title">版の差分</span>
-                  {prev ? <Segmented value={diffVersion} onChange={setDiffVersion} options={[{ value: "prev", label: `v${prev.version} → v${history[history.length - 1].version}` }]} /> : null}
-                </div>
-                {prev ? <DiffViewer before={prev.body} after={history[history.length - 1].body} beforeLabel={`v${prev.version}`} afterLabel={`v${history[history.length - 1].version}`} /> : <p className="small muted">この要求の版は1つだけです。</p>}
+                <span className="section-title">承認の記録（版ごと）</span>
+                <ApprovalRecords approvals={meta.approvals} />
               </div>
-              <div className="card">
+              <div className="card stack">
+                <span className="section-title">状態遷移</span>
                 <Timeline
-                  items={[
-                    ...history.slice().reverse().map((h) => ({ id: `v${h.version}`, actor: { kind: "human" as const, name: userById(h.by)?.name ?? "" }, action: `v${h.version} を保存`, at: h.at, detail: h.note, kind: "status" as const })),
-                    ...findings.filter((f) => f.status !== "unconfirmed").map((f) => ({ id: f.id, actor: { kind: "human" as const, name: userById(f.decided_by)?.name ?? "" }, action: f.status === "adopted" ? "AI所見を採用" : "AI所見を却下", target: f.id, at: f.created_at })),
-                    ...findings.slice(0, 1).map((f) => ({ id: `run-${f.id}`, actor: { kind: "ai" as const, name: "要求レビュー" }, action: `所見を${findings.length}件記録`, at: f.created_at })),
-                  ]}
+                  items={meta.transitions
+                    .slice()
+                    .reverse()
+                    .map((t, i) => ({
+                      id: `t${i}`,
+                      actor: { kind: "human" as const, name: `${requirementActor(t.by)}` },
+                      action: `${t.from ? ARTIFACT_FLOW_LABEL[t.from] : "作成"} → ${ARTIFACT_FLOW_LABEL[t.to]}（v${t.version}）`,
+                      at: t.at,
+                      detail: [t.via, t.note].filter(Boolean).join("・"),
+                      kind: "status" as const,
+                    }))}
                 />
               </div>
             </div>
+          ) : tab === "ai" ? (
+            <AiReviewPanel req={req} embedded />
           ) : (
-            <div className="card">
+            <div className="card stack">
+              <p className="tiny muted">正本（GitHub PR #{meta.issue?.slice(1) ?? "—"} のコメント）から同期しています。返信は正本で行います。</p>
               <CommentThread comments={requirementComments} />
             </div>
           )
@@ -332,47 +227,45 @@ export function RequirementDetail({ id }: { id: string }) {
               <StatusBadge vocab={ARTIFACT_STATUS[req.status]} />
               <StateFlow flow="requirement" current={ARTIFACT_FLOW_LABEL[req.status]} />
             </MetaSection>
-            <MetaSection title="担当者">
-              <Combobox options={users.filter((u) => u.roles.includes("アナリスト") || u.roles.includes("PM")).map((u) => ({ value: u.id, label: u.name, hint: u.roles.join("・") }))} value={[req.owner_id]} />
+            <MetaSection title="承認版の固定">
+              <ApprovedPin version={meta.approved_version} at={meta.approved_at} hash={meta.approved_hash} />
             </MetaSection>
-            {isNew ? null : (
-              <MetaSection title="承認">
-                <ApprovalPanel
-                  title="必要な承認"
-                  approvers={approversOf(req)}
-                  canDecide={req.status === "pending" && !isOwner}
-                  blockedReason={req.status === "pending" && isOwner ? "あなたはこの要求の作成者のため承認できません" : undefined}
-                  eligible={membersWithRole("PM", req.owner_id)}
-                  onDecide={(d) => toast({ kind: "success", message: d === "approved" ? "承認しました" : "差し戻しました" })}
-                />
-                {req.status !== "pending" && req.status !== "approved" ? <p className="tiny muted">承認の依頼後に、承認者が判断できるようになります。</p> : null}
-              </MetaSection>
-            )}
+            <MetaSection title="担当">
+              <KeyValueList
+                stacked
+                items={[
+                  { label: "担当者（作成者）", value: <ExternalActor userId={req.owner_id} role="アナリスト" /> },
+                  { label: "更新日時", value: <Timestamp at={req.updated_at} mode="absolute" /> },
+                ]}
+              />
+            </MetaSection>
+            <MetaSection title={`現在の版（v${req.version}）の承認`}>
+              {panelApprovers.length ? (
+                <ApprovalPanel title="必要な承認" approvers={panelApprovers} canDecide={false} />
+              ) : (
+                <p className="small muted">まだ承認を依頼していません。</p>
+              )}
+              <p className="tiny muted"><Icon name="info" size={12} /> 承認は承認者本人が正本のレビューまたは期限付き承認リンクで行います。経営層は代行しません。</p>
+            </MetaSection>
             <MetaSection title="属性">
               <KeyValueList
                 stacked
                 items={[
                   { label: "データ分類", value: <DataClassBadge value={req.data_class} /> },
-                  { label: "作成者", value: <UserChip user={userById(req.owner_id)} plain /> },
-                  { label: "更新日時", value: <Timestamp at={req.updated_at} mode="absolute" /> },
                   { label: "関連する変更要求", value: req.source.includes("CR-") ? <IdLink id={req.source.match(/CR-\d+/)![0]} to={paths.change(org, project, req.source.match(/CR-\d+/)![0])} /> : <span className="muted">なし</span> },
                 ]}
               />
             </MetaSection>
-            {!isNew && openFindings ? (
-              <div className="card tight row" style={{ ["--gap" as string]: "8px" }}>
-                <Icon name="sparkles" className="text-special" />
-                <span className="small grow">未確認のAI所見が {openFindings}件あります</span>
-                <Button size="sm" onClick={() => setTab("ai")}>確認</Button>
-              </div>
-            ) : null}
           </>
         }
       />
-      <ConfirmDialog open={leaveOpen} onClose={() => setLeaveOpen(false)} onConfirm={() => { setDirty(false); setEditing(false); if (isNew) navigate(paths.requirements(org, project)); }} title="保存していない変更があります" message="このまま移動すると、編集内容は失われます。" confirmLabel="破棄して移動" danger />
-      <ConfirmDialog open={obsoleteOpen} onClose={() => setObsoleteOpen(false)} onConfirm={() => { setReq((r) => ({ ...r, status: "obsolete" })); toast({ kind: "success", message: `${req.id} を廃止しました` }); }} title="要求を廃止しますか" message={`${req.id} を廃止すると、トレーサビリティの集計から外れます。リンクは履歴として残ります。この操作は取り消せません。`} confirmLabel="廃止する" danger requireText={req.id} />
     </ProjectLayout>
   );
+}
+
+function requirementActor(id: string) {
+  const u = userById(id);
+  return u ? `${u.name}${u.kind === "external" ? "（顧客）" : ""}` : id;
 }
 
 export { reqPath };

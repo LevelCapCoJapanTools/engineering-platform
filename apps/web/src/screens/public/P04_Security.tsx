@@ -79,13 +79,28 @@ export function P04Security() {
           <Block id="credential" icon="key" title="AI エージェントの認証情報">
             AI エージェントには、リポジトリ単位で権限を絞った短命の認証情報を処理ごとに発行します。実行できる操作は許可リストに限り、外部 URL の取得は既定で無効です。
           </Block>
+          <Block id="connectors" icon="plug" title="連携先の資格情報と同期データ">
+            コードホスティング・計画管理・カレンダー・チャットの資格情報は暗号化して組織ごとに分離し、ローテーションと失効を記録します。Webhook は署名を検証し、偽装や再送を拒否します。カレンダーは許可した共有カレンダーの件名・日時など最小限の項目だけを取り込み、個人の非公開予定は取り込みません。
+          </Block>
+          <Block id="access" icon="eye" title="閲覧範囲とアクセス制御">
+            経営層ごとに組織・事業部・顧客・案件・機密区分の閲覧範囲を設定し、役職だけで全社閲覧を付与しません。MFA を必須にでき、退職者の無効化は連携先・承認・通知・当番に反映します。
+          </Block>
+          <Block id="region" icon="globe" title="保存地域と削除">
+            データと証跡のバックアップは日本国内のリージョンに保存します。AI の提供先（再委託先）と処理リージョンは設定画面で公開し、変更は事前に通知します。組織を削除すると、連携先から取り込んだ複製も含めて削除します（WORM に保管した証跡は保持期限まで残ります）。
+          </Block>
+          <Block id="ops" icon="server" title="運用と障害への備え">
+            マルチテナントの分離、通信・保管の暗号化、バックアップと復旧の手順、監視とアラートを運用します。障害や保守の予定は稼働状況のページで告知します。
+          </Block>
         </div>
         <section className="card row between" style={{ ["--gap" as string]: "16px" }}>
           <div className="stack" style={{ ["--gap" as string]: "4px" }}>
             <strong className="strong">セキュリティに関するお問い合わせ</strong>
             <span className="small muted">security@product.example（脆弱性の報告もこちらへ）</span>
           </div>
-          <Button variant="secondary" to={paths.contact()}>お問い合わせ</Button>
+          <span className="row" style={{ ["--gap" as string]: "8px" }}>
+            <Button variant="secondary" to={paths.support()}>脆弱性の報告</Button>
+            <Button variant="ghost" to={paths.status()}>稼働状況</Button>
+          </span>
         </section>
       </div>
     </PublicLayout>

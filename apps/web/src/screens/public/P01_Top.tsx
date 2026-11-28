@@ -1,76 +1,79 @@
 // 画面ID: P-01 トップ
+// 経営層向けの訴求: 複数案件の計画・実績・リスク・判断事項を、既存システムから同期して一画面で示す。
 import "./public.css";
-import { ActorLabel, Button, GateResultPanel, GateSummaryStrip, Icon, PublicLayout, StatusBadge, TraceGraph, TraceLegend } from "../../ui";
-import type { IconName, TraceEdge, TraceNode } from "../../ui";
+import { ActorLabel, Button, Icon, PlanDates, ProviderBadge, PublicLayout, StatusBadge, SourceTag } from "../../ui";
+import type { IconName } from "../../ui";
 import { paths } from "../../lib/paths";
 import { Link } from "../../lib/router";
-import { GATE_STATUS } from "../../lib/vocab";
-import type { ActorKind } from "../../lib/vocab";
-import { gateRuns } from "../../mocks/core";
+import { CONNECTOR_CATEGORY, DECISION_STATUS, HEALTH, PROVIDERS } from "../../lib/vocab";
+import type { ActorKind, ConnectorCategory, ProviderKey } from "../../lib/vocab";
+import { projectBySlug } from "../../mocks/core";
+import { decisions, projectHealth } from "../../mocks/portfolio";
 
 const problems: { icon: IconName; title: string; body: string }[] = [
-  { icon: "fileText", title: "文書作成が重い", body: "計画・要求・テスト記録を別々の Word で書き、最新版がどれか分からなくなる。" },
-  { icon: "trace", title: "要求とテストがつながらない", body: "承認した要求が実装・テストまで届いたかを、誰も一目で確かめられない。" },
-  { icon: "archive", title: "監査前の証拠集め", body: "評価の直前に CI のスクリーンショットや議事録をかき集めている。" },
-  { icon: "message", title: "品質の説明が難しい", body: "顧客に「ちゃんと作っている」ことを、根拠を添えて説明しづらい。" },
+  { icon: "clock", title: "遅れに気づくのが遅い", body: "案件ごとに報告の形式が違い、計画と見込みのずれが会議の場で初めて分かる。" },
+  { icon: "scale", title: "判断の根拠が残らない", body: "投資・優先順位・リスク受容を誰がどの根拠で決めたかが、メールと議事録に散らばる。" },
+  { icon: "users", title: "現場に報告書を書かせている", body: "経営向けの報告のために、PM や開発者が同じ内容を何度も入力している。" },
+  { icon: "archive", title: "品質の説明と監査前の証拠集め", body: "顧客や評価者に、作り方の確かさを根拠付きで説明しづらい。" },
 ];
 
 const flow: { actor: ActorKind; title: string; body: string }[] = [
-  { actor: "ai", title: "AIが下書きする", body: "SOW から要求候補を抽出し、曖昧さや矛盾を指摘します。下書きと参考所見だけを出します。" },
-  { actor: "ci", title: "CIが検査する", body: "ID、リンク、テスト結果、署名など、機械的に確かめられる統制項目を PR ごとに検査します。" },
-  { actor: "human", title: "人が承認する", body: "要求の妥当性、設計、例外、リリース、受入は人が判断し、誰がいつ承認したかを残します。" },
-  { actor: "system", title: "証跡が残る", body: "判定・承認・ハッシュを Evidence Manifest にまとめて署名し、改ざん耐性のある保管先に残します。" },
+  { actor: "system", title: "既存システムから同期", body: "課題・計画管理、共有カレンダー、Git・CI から計画・予測・実績を読み取り、出典と鮮度を付けて集めます。" },
+  { actor: "ai", title: "AIが要約する", body: "計画差異やリスクを要約します。元データへのリンクと確信度を付けた参考情報で、判断はしません。" },
+  { actor: "ci", title: "ルールとCIが検査する", body: "ID、リンク、テスト結果、署名など、機械的に確かめられる統制項目を検査します。" },
+  { actor: "human", title: "責任者が判断する", body: "投資・優先順位・リスク受容は経営層が、要求承認や受入は実際の責任者・顧客が判断し、記録します。" },
 ];
 
 const features: { icon: IconName; title: string; body: string; anchor: string }[] = [
-  { icon: "list", title: "要求管理", body: "REQ-ID、受入基準、承認状態を一元管理。AI が曖昧な表現を指摘します。", anchor: "requirements" },
-  { icon: "trace", title: "トレーサビリティ", body: "要求→設計→コード→テストのつながりと欠落をグラフで確認。", anchor: "trace" },
-  { icon: "shield", title: "CIゲート", body: "構造・トレーサビリティ・人間の承認・証跡の4段で PR を検査。", anchor: "gates" },
-  { icon: "flag", title: "例外管理", body: "理由・リスク・期限・承認者を持つ例外だけが通過を許します。", anchor: "exceptions" },
-  { icon: "signature", title: "証跡と署名", body: "判定の入力とルールのハッシュを署名し、WORM に保管。", anchor: "evidence" },
-  { icon: "package", title: "監査パック", body: "統制項目から証跡を逆引きし、評価者へ期限付きで共有。", anchor: "audit" },
+  { icon: "grid", title: "ポートフォリオ", body: "全案件の健全性、計画と予測、予算、証跡の準備状況を一覧で比較します。", anchor: "portfolio" },
+  { icon: "calendar", title: "計画とカレンダーの同期", body: "当初計画・承認済み改訂・予測・実績を分けて保存し、遅延の履歴を消しません。", anchor: "schedule" },
+  { icon: "inbox", title: "経営判断の記録", body: "判断の依頼、選択肢、根拠、条件、期限、実施状況を一続きで残します。", anchor: "decisions" },
+  { icon: "briefcase", title: "投資と配分", body: "事業ケース、優先順位、役割別の要員と予算、ロードマップ、便益の確認。", anchor: "investment" },
+  { icon: "shield", title: "ゲートと例外", body: "構造・トレーサビリティ・承認・証跡の4段の検査と、期限付きの例外。", anchor: "gates" },
+  { icon: "package", title: "証跡と監査パック", body: "署名した Evidence Manifest を WORM に保管し、評価者へ期限付きで共有。", anchor: "audit" },
 ];
 
-const nodes: TraceNode[] = [
-  { id: "REQ-0001", col: 0, title: "発注書を作成できる" },
-  { id: "REQ-0006", col: 0, title: "操作ログを7年保存" },
-  { id: "ADR-0002", col: 1, title: "発注番号の採番" },
-  { id: "ADR-0004", col: 1, title: "追記専用ストレージ" },
-  { id: "PR #124", col: 2, title: "発注書の保存" },
-  { id: "PR #142", col: 2, title: "ログの書き込み" },
-  { id: "TC-0101", col: 3, title: "発注書を保存できる" },
-  { id: "missing-1", col: 3, title: "テストが必要", missing: true },
-];
-const edges: TraceEdge[] = [
-  { from: "REQ-0001", to: "ADR-0002" },
-  { from: "ADR-0002", to: "PR #124" },
-  { from: "PR #124", to: "TC-0101" },
-  { from: "REQ-0006", to: "ADR-0004" },
-  { from: "ADR-0004", to: "PR #142", ai: true },
-  { from: "PR #142", to: "missing-1" },
+const CONNECT: { category: ConnectorCategory; providers: ProviderKey[] }[] = [
+  { category: "planning", providers: ["githubProjects", "gitlabIssues", "azureBoards", "jira"] },
+  { category: "calendar", providers: ["googleCalendar", "m365Calendar"] },
+  { category: "scm", providers: ["github", "gitlab", "codecommit", "azureRepos"] },
+  { category: "chat", providers: ["slack", "teams", "googleChat", "mattermost", "chatwork", "discord"] },
+  { category: "oncall", providers: ["pagerduty"] },
 ];
 
 function HeroMock() {
-  const run = gateRuns[0];
+  const pending = decisions.filter((d) => d.status === "pending").slice(0, 2);
   return (
     <div className="mock-frame hero-mock" aria-label="製品画面のイメージ">
       <div className="bar"><i /><i /><i /></div>
       <div className="mock-body">
         <div className="row between">
-          <span className="row" style={{ ["--gap" as string]: "8px" }}>
-            <Icon name="pullRequest" size={14} className="muted" />
-            <span className="strong">#{run.pr_number} {run.pr_title}</span>
-          </span>
-          <span className="row" style={{ ["--gap" as string]: "8px" }}>
-            <GateSummaryStrip gates={run.gates} />
-            <StatusBadge vocab={GATE_STATUS.block} size="sm" />
-          </span>
+          <span className="strong">ポートフォリオ</span>
+          <span className="tiny muted">4 案件 · 判断待ち {decisions.filter((d) => d.status === "pending").length} 件</span>
         </div>
-        <GateResultPanel letter="B" status="block" reasons={run.reasons.filter((r) => r.gate === "B").slice(0, 1)} enforcement="soft" policyVersion={run.policy_version} />
-        <div style={{ pointerEvents: "none" }}>
-          <TraceGraph nodes={nodes} edges={edges} selected="REQ-0006" height={200} />
+        <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+          {projectHealth.slice(0, 3).map((h) => (
+            <div key={h.slug} className="row between" style={{ padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 8 }}>
+              <span className="stack" style={{ ["--gap" as string]: "2px" }}>
+                <span className="small strong">{projectBySlug(h.slug).name}</span>
+                <SourceTag source={h.source} prefix="" compact />
+              </span>
+              <span className="row" style={{ ["--gap" as string]: "8px" }}>
+                <PlanDates baseline={h.baseline_end} forecast={h.forecast_end} compact />
+                <StatusBadge vocab={HEALTH[h.health]} size="sm" />
+              </span>
+            </div>
+          ))}
         </div>
-        <TraceLegend />
+        <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+          <span className="tiny muted">判断待ち</span>
+          {pending.map((d) => (
+            <div key={d.id} className="row between small" style={{ ["--gap" as string]: "8px" }}>
+              <span className="truncate">{d.title}</span>
+              <StatusBadge vocab={DECISION_STATUS[d.status]} size="sm" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -82,16 +85,17 @@ export function P01Top() {
       <section className="hero">
         <div className="container hero-grid">
           <div className="stack" style={{ ["--gap" as string]: "20px" }}>
-            <span className="eyebrow">CONTINUOUS ASSURANCE FOR SMALL TEAMS</span>
-            <h1 className="display">いつもの PR に、<br />品質ゲートと証跡を。</h1>
-            <p className="lead">GitHub に入れるだけで、要求からテスト、承認、リリースまでのつながりを PR ごとに検査し、改ざん耐性のある証跡として残します。ISO/IEC 29110 の適合準備を、開発の流れを止めずに進められます。</p>
+            <span className="eyebrow">FOR EXECUTIVES OF SMALL DEVELOPMENT COMPANIES</span>
+            <h1 className="display">全案件の計画と実績、<br />判断事項をひとつの画面に。</h1>
+            <p className="lead">課題・計画管理、共有カレンダー、GitHub などから自動で同期し、遅延・重大リスク・判断待ち・証跡の準備状況を経営層に示します。現場に報告書の入力を増やさず、判断の根拠を記録に残します。ISO/IEC 29110 の適合準備も、同じ記録から進められます。</p>
             <div className="row" style={{ ["--gap" as string]: "10px" }}>
               <Button variant="primary" size="lg" iconRight="arrowRight" to={paths.contact()}>PoCを相談</Button>
               <Button variant="secondary" size="lg" to={paths.features()}>機能を見る</Button>
             </div>
             <div className="row small muted" style={{ ["--gap" as string]: "16px" }}>
-              <span className="row" style={{ ["--gap" as string]: "6px" }}><Icon name="github" size={14} />GitHub App で導入</span>
-              <span className="row" style={{ ["--gap" as string]: "6px" }}><Icon name="shieldCheck" size={14} />判定は AI ではなくルールと人</span>
+              <span className="row" style={{ ["--gap" as string]: "6px" }}><Icon name="plug" size={14} />既存のツールを読み取るだけ</span>
+              <span className="row" style={{ ["--gap" as string]: "6px" }}><Icon name="users" size={14} />開発者のアカウントは不要</span>
+              <span className="row" style={{ ["--gap" as string]: "6px" }}><Icon name="shieldCheck" size={14} />判断は AI ではなく人</span>
             </div>
           </div>
           <HeroMock />
@@ -102,7 +106,7 @@ export function P01Top() {
         <div className="container stack" style={{ ["--gap" as string]: "28px" }}>
           <div className="stack" style={{ ["--gap" as string]: "8px" }}>
             <span className="eyebrow">PROBLEMS</span>
-            <h2 className="headline">小さなチームの品質保証は、手作業に頼りがち</h2>
+            <h2 className="headline">複数案件の状況把握と判断は、手作業に頼りがち</h2>
           </div>
           <div className="grid cols-4">
             {problems.map((p) => (
@@ -120,8 +124,8 @@ export function P01Top() {
         <div className="container stack" style={{ ["--gap" as string]: "28px" }}>
           <div className="stack" style={{ ["--gap" as string]: "8px" }}>
             <span className="eyebrow">HOW IT WORKS</span>
-            <h2 className="headline">AIが下書きし、CIが検査し、人が承認し、証跡が残る</h2>
-            <p className="lead">誰が判断したかを、すべての画面で見分けられるようにしています。</p>
+            <h2 className="headline">同期し、要約し、検査し、責任者が判断する</h2>
+            <p className="lead">誰が判断したか、どのデータがいつ同期されたかを、すべての画面で見分けられるようにしています。</p>
           </div>
           <div className="flow">
             {flow.map((f, i) => (
@@ -162,13 +166,13 @@ export function P01Top() {
         <div className="container stack" style={{ ["--gap" as string]: "28px" }}>
           <div className="stack" style={{ ["--gap" as string]: "8px" }}>
             <span className="eyebrow">ONBOARDING</span>
-            <h2 className="headline">開発を止めずに、段階的に導入</h2>
+            <h2 className="headline">15 分で始めて、段階的に強める</h2>
           </div>
           <div className="steps-row">
             {[
-              { t: "GitHub App をインストール", b: "必要な権限だけを要求します。" },
-              { t: "リポジトリを選択", b: "まずは1つの案件から。" },
-              { t: "警告モードで開始", b: "PR に警告を表示するだけで、ブロックしません。" },
+              { t: "計画とカレンダーを接続", b: "読み取り専用。予定は書き換えません。" },
+              { t: "コードホスティングを接続", b: "GitHub・GitLab・CodeCommit・Azure Repos。" },
+              { t: "警告モードで開始", b: "ゲートは警告だけ。開発は止まりません。" },
               { t: "段階的に強制", b: "慣れたらソフト、ハードへ切り替えます。" },
             ].map((s, i) => (
               <div key={s.t} className={i === 2 ? "active" : undefined}>
@@ -182,6 +186,24 @@ export function P01Top() {
       </section>
 
       <section className="section alt">
+        <div className="container stack" style={{ ["--gap" as string]: "24px" }}>
+          <div className="stack" style={{ ["--gap" as string]: "8px" }}>
+            <span className="eyebrow">INTEGRATIONS</span>
+            <h2 className="headline">いま使っているツールにつながる</h2>
+            <p className="lead">各ツールが正本のまま。このサービスは読み取って集め、出典と同期時刻を必ず表示します。</p>
+          </div>
+          <div className="grid auto-fit">
+            {CONNECT.map((c) => (
+              <div key={c.category} className="card stack" style={{ ["--gap" as string]: "10px" }}>
+                <strong className="strong">{CONNECTOR_CATEGORY[c.category].label}</strong>
+                <div className="stack" style={{ ["--gap" as string]: "6px" }}>{c.providers.map((p) => <span key={p} title={PROVIDERS[p].note}><ProviderBadge provider={p} showStatus /></span>)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
         <div className="container stack" style={{ ["--gap" as string]: "24px" }}>
           <div className="stack" style={{ ["--gap" as string]: "8px" }}>
             <span className="eyebrow">TRUST</span>
@@ -200,7 +222,7 @@ export function P01Top() {
               </div>
             ))}
           </div>
-          <Link to={paths.security()}>セキュリティとデータの扱いを見る →</Link>
+          <span className="row" style={{ ["--gap" as string]: "16px" }}><Link to={paths.security()}>セキュリティとデータの扱いを見る →</Link><Link to={paths.status()}>稼働状況 →</Link></span>
           <div className="card row between" style={{ ["--gap" as string]: "16px" }}>
             <div className="stack" style={{ ["--gap" as string]: "4px" }}>
               <strong className="strong">規格との関係</strong>
@@ -215,8 +237,8 @@ export function P01Top() {
         <div className="container">
           <div className="cta-band">
             <div className="stack" style={{ ["--gap" as string]: "6px" }}>
-              <h2 className="headline" style={{ color: "inherit" }}>まずは1案件から試しませんか</h2>
-              <p style={{ opacity: 0.85 }}>プロセスの整理から PoC の設計まで、一緒に進めます。</p>
+              <h2 className="headline" style={{ color: "inherit" }}>まずは今の案件をつないでみませんか</h2>
+              <p style={{ opacity: 0.85 }}>計画とカレンダーの接続から、経営ダッシュボードの確認まで一緒に進めます。</p>
             </div>
             <Button variant="secondary" size="lg" iconRight="arrowRight" to={paths.contact()}>PoCを相談</Button>
           </div>

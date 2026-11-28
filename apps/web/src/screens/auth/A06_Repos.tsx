@@ -1,8 +1,8 @@
-// 画面ID: A-06 リポジトリの選択（オンボーディング 3/7）
+// 画面ID: A-06 対象の選択（オンボーディング 3/10）
 import { useState } from "react";
 import { useScreenState } from "../../lib/router";
-import { paths } from "../../lib/paths";
-import { Button, EmptyState, ErrorState, OnboardingLayout, PlanLimitNotice, SearchBox, Skeleton, Tag, Timestamp } from "../../ui";
+import { Button, EmptyState, ErrorState, PlanLimitNotice, ProviderBadge, SearchBox, Skeleton, Tag, Timestamp } from "../../ui";
+import { ExecOnboarding } from "./parts";
 import { repos } from "../../mocks/core";
 
 export function Repos() {
@@ -13,19 +13,19 @@ export function Repos() {
   const list = state === "empty" ? [] : repos.filter((r) => r.full_name.includes(q));
   const atLimit = sel.length >= limit;
   return (
-    <OnboardingLayout step={2} title="リポジトリを選択" description="ゲートと証跡の対象にするリポジトリを選びます。あとから追加・削除できます。" back={paths.onboardingGithub()} next={paths.onboardingProfile()} nextDisabled={sel.length === 0} nextDisabledReason="リポジトリを1つ以上選んでください">
+    <ExecOnboarding step={2} title="対象のリポジトリを選択" description="進捗と証跡の取込み、ゲートの対象にするリポジトリを選びます。あとから追加・削除できます。リポジトリ数は課金に影響しません。" nextDisabled={sel.length === 0} nextDisabledReason="リポジトリを1つ以上選んでください">
       {state === "limit" ? <PlanLimitNotice used={sel.length} limit={limit} plan="Starter" /> : null}
       <div className="row between">
         <SearchBox placeholder="リポジトリ名で絞り込み" value={q} onChange={setQ} width={280} />
-        <span className="small"><strong>{sel.length}</strong><span className="muted"> / {limit} 件を選択（{state === "limit" ? "Starter" : "Team"} プランの上限）</span></span>
+        <span className="row small" style={{ ["--gap" as string]: "8px" }}><ProviderBadge provider="github" size="sm" /><strong>{sel.length}</strong><span className="muted"> / {limit} 件を選択（{state === "limit" ? "Starter" : "Team"} プランの目安）</span></span>
       </div>
       {state === "loading" ? (
         <Skeleton rows={4} />
       ) : state === "error" ? (
-        <ErrorState title="リポジトリの一覧を取得できませんでした" description="GitHub App の権限が変更された可能性があります。再試行するか、前の手順でインストール先を確認してください。" />
+        <ErrorState title="リポジトリの一覧を取得できませんでした" description="接続の権限が変更された可能性があります。再試行するか、前の手順で接続先を確認してください。" />
       ) : list.length === 0 ? (
         <div className="card">
-          <EmptyState icon="github" title="選べるリポジトリがありません" description="GitHub App のインストール時に、対象リポジトリを選んでいない可能性があります。GitHub で App の設定を開き、対象を追加してください。" action={<Button icon="external">GitHub で App の設定を開く</Button>} />
+          <EmptyState icon="github" title="選べるリポジトリがありません" description="接続時に対象リポジトリを選んでいない可能性があります。接続先で App の設定を開き、対象を追加してください。" action={<Button icon="external">GitHub で App の設定を開く</Button>} />
         </div>
       ) : (
         <div className="card flush">
@@ -53,6 +53,6 @@ export function Repos() {
           </div>
         </div>
       )}
-    </OnboardingLayout>
+    </ExecOnboarding>
   );
 }

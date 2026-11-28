@@ -1,40 +1,39 @@
 // 画面ID: J-06 リスク・是正の詳細
+// 内容・対策・状態は正本（課題・計画管理）で更新される。経営層は残余リスク、判断根拠、完了確認、関連項目を確認し、リスク受容などの経営判断へ進む。
 import { useState } from "react";
 import {
   ActorLabel,
   Button,
-  Combobox,
   CommentThread,
   DeadlineIndicator,
   DetailLayout,
   EmptyState,
   ErrorState,
   EvidenceItem,
+  ExternalActor,
   IdLink,
   KeyValueList,
   MetaSection,
-  Modal,
-  MoreMenu,
   PageHeader,
   ProjectLayout,
+  ResponsibilitySplit,
   Section,
-  Select,
   Skeleton,
+  SourceTag,
   StatusBadge,
   Tabs,
   Tag,
-  TextArea,
   Timeline,
   Timestamp,
-  UserChip,
   useToast,
 } from "../../ui";
 import { useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import { RISK_STATUS } from "../../lib/vocab";
 import type { RiskStatus } from "../../lib/vocab";
-import { evidence, risks, userById, users } from "../../mocks/core";
-import { orgOf, projectOf } from "./shared";
+import { evidence, risks } from "../../mocks/core";
+import { PLAN_SOURCE, riskExtras } from "../../mocks/planning";
+import { DecisionLink, SourceBar, orgOf, projectOf } from "./shared";
 
 export const J06_STATES = ["既定", "完了済み", "読み込み中", "取得失敗"];
 
@@ -53,6 +52,9 @@ function relLink(org: string, pr: string, id: string) {
   if (id.startsWith("EXC")) return paths.exception(org, pr, id);
   if (id.startsWith("MAN")) return paths.manifest(org, pr, id);
   if (id.startsWith("CR")) return paths.change(org, pr, id);
+  if (id.startsWith("run-")) return paths.gate(org, pr, id);
+  if (id.startsWith("rel-")) return paths.release(org, pr, id);
+  if (id.startsWith("DEC")) return paths.decision(org, id);
   return undefined;
 }
 
@@ -62,13 +64,14 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
   const pr = projectOf(params);
   const toast = useToast();
   const base = risks.find((r) => r.id === params.id) ?? risks[0];
-  const [status, setStatus] = useState<RiskStatus>(state === "完了済み" ? "done" : base.status);
-  const [owner, setOwner] = useState<string[]>([base.owner_id]);
+  const status: RiskStatus = state === "完了済み" ? "done" : base.status;
   const [tab, setTab] = useState("content");
-  const [decide, setDecide] = useState(false);
+  const extra = riskExtras[base.id] ?? { residual: "未評価", basis: "（未記入）", source: PLAN_SOURCE };
+  const completion = state === "完了済み" ? extra.completion ?? { by: base.owner_id, at: "2026-11-27T09:00:00+09:00", note: "対策の実施と効果を確認" } : extra.completion;
   const d = DETAILS[base.id] ?? { content: base.title, cause: "（未記入）", impact: "（未記入）", plan: "（未記入）" };
   const ev = evidence.slice(0, 2);
-  const isDone = state === "完了済み" || status === "done";
+  const related = [...base.related, ...(extra.gates ?? []), ...(extra.releases ?? []), ...(extra.decision ? [extra.decision] : [])];
+  const isDone = status === "done";
 
   return (
     <ProjectLayout org={org} project={pr} active="risks" trail={[{ label: "リスク・是正", to: paths.risks(org, pr) }, { label: base.id }]}>
@@ -84,9 +87,12 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
         }
         actions={
           <>
-            <Button icon="pen" onClick={() => setDecide(true)}>判断を記録</Button>
-            <Button variant="primary" icon="check" disabled={isDone} disabledReason="すでに完了しています" onClick={() => { setStatus("done"); toast({ kind: "success", message: `${base.id} を完了にしました`, undo: () => setStatus(base.status) }); }}>完了にする</Button>
-            <MoreMenu items={[{ label: "編集", icon: "edit" }, { label: "変更要求を起票", icon: "compare" }]} />
+            {extra.decision ? (
+              <Button variant="primary" icon="inbox" to={paths.decision(org, extra.decision)}>経営判断を開く</Button>
+            ) : (
+              <Button icon="inbox" disabled={isDone} disabledReason="完了したリスクは判断を依頼できません" onClick={() => toast({ kind: "success", message: "リスク受容の判断を経営判断に追加しました" })}>リスク受容の判断を依頼</Button>
+            )}
+            <Button icon="external">正本で開く</Button>
           </>
         }
       />
@@ -98,13 +104,31 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
         <DetailLayout
           main={
             <>
-              <Tabs value={tab} onChange={setTab} tabs={[{ value: "content", label: "内容" }, { value: "related", label: "関連", count: base.related.length }, { value: "history", label: "履歴" }, { value: "comments", label: "コメント", count: 2 }]} />
+              <Tabs value={tab} onChange={setTab} tabs={[{ value: "content", label: "内容" }, { value: "related", label: "関連", count: related.length }, { value: "history", label: "履歴" }, { value: "comments", label: "コメント", count: 2 }]} />
               {tab === "content" ? (
                 <>
+                  <SourceBar source={extra.source} note="内容と状態は課題・計画管理で更新されます" />
                   <Section title="内容">
-                    <KeyValueList items={[{ label: "内容", value: d.content }, { label: "原因", value: d.cause }, { label: "影響", value: d.impact }, { label: "対応策", value: d.plan }]} />
+                    <KeyValueList items={[{ label: "内容", value: d.content }, { label: "原因", value: d.cause }, { label: "影響", value: d.impact }, { label: "対応策", value: d.plan }, { label: "残余リスク", value: extra.residual }, { label: "判断根拠", value: extra.basis }]} />
                   </Section>
-                  <Section title="判断" sub="誰がいつ何を決めたかを記録します" actions={<Button size="sm" icon="plus" onClick={() => setDecide(true)}>判断を記録</Button>}>
+                  <Section title="責任の分担">
+                    <ResponsibilitySplit
+                      decide={extra.decision ? <DecisionLink org={org} id={extra.decision} /> : <span className="small">重大な場合は経営層がリスク受容を判断</span>}
+                      act={<ExternalActor userId={base.owner_id} role="対応責任者" />}
+                      note="経営判断は判断者・理由・条件・期限とともに監査記録に残ります"
+                    />
+                  </Section>
+                  <Section title="完了確認" sub="対策の実施と効果を誰が確認したか">
+                    {completion ? (
+                      <div className="pl-decision">
+                        <div className="row between"><ExternalActor userId={completion.by} /><span className="tiny muted"><Timestamp at={completion.at} mode="absolute" /></span></div>
+                        <span>{completion.note}</span>
+                      </div>
+                    ) : (
+                      <span className="small muted">未確認です。対策の完了後、対応責任者以外が確認すると記録されます。</span>
+                    )}
+                  </Section>
+                  <Section title="現場での判断の記録" sub="正本で記録された判断（誰がいつ何を決めたか）">
                     <div className="stack" style={{ ["--gap" as string]: "10px" }}>
                       <div className="pl-decision">
                         <div className="row between">
@@ -127,10 +151,10 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
                   </Section>
                 </>
               ) : tab === "related" ? (
-                <Section title="関連する項目">
-                  {base.related.length ? (
+                <Section title="関連する項目" sub="要求・変更・ゲート・リリース・経営判断">
+                  {related.length ? (
                     <div className="stack" style={{ ["--gap" as string]: "8px" }}>
-                      {base.related.map((id) => <div key={id} className="row"><IdLink id={id} to={relLink(org, pr, id)} /></div>)}
+                      {related.map((id) => <div key={id} className="row"><IdLink id={id} to={relLink(org, pr, id)} /></div>)}
                     </div>
                   ) : (
                     <EmptyState title="関連する項目はありません" />
@@ -157,22 +181,24 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
           side={
             <>
               <MetaSection title="状態と担当">
-                <Select label="状態" value={isDone ? "done" : status} onChange={(v) => { setStatus(v as RiskStatus); toast({ kind: "success", message: `状態を「${RISK_STATUS[v as RiskStatus].label}」に変更しました` }); }} options={Object.entries(RISK_STATUS).map(([value, v]) => ({ value, label: v.label }))} />
-                <Combobox label="担当者" value={owner} onChange={(v) => { setOwner(v); toast({ kind: "success", message: "担当者を変更しました" }); }} options={users.filter((u) => u.kind === "member" && u.status === "active").map((u) => ({ value: u.id, label: u.name, hint: u.roles[0] }))} />
-                <div className="stack" style={{ ["--gap" as string]: "4px" }}>
-                  <span className="label">期限</span>
-                  {isDone ? <span className="small muted">{base.due_at}（完了済み）</span> : <DeadlineIndicator date={base.due_at} />}
-                </div>
+                <KeyValueList
+                  stacked
+                  items={[
+                    { label: "状態", value: <StatusBadge vocab={RISK_STATUS[status]} size="sm" /> },
+                    { label: "対応責任者", value: <ExternalActor userId={base.owner_id} /> },
+                    { label: "期限", value: isDone ? <span className="small muted">{base.due_at}（完了済み）</span> : <DeadlineIndicator date={base.due_at} /> },
+                    { label: "残余リスク", value: extra.residual },
+                  ]}
+                />
               </MetaSection>
               <MetaSection title="属性">
                 <KeyValueList
                   stacked
                   items={[
-                    { label: "作成者", value: <UserChip user={userById("u-sato")} /> },
+                    { label: "作成者", value: <ExternalActor userId="u-sato" /> },
                     { label: "作成日時", value: "2026-11-10 10:00 JST" },
-                    { label: "更新者", value: <UserChip user={userById(owner[0])} /> },
-                    { label: "更新日時", value: "2026-11-21 17:10 JST" },
-                    { label: "状態", value: <StatusBadge vocab={RISK_STATUS[isDone ? "done" : status]} size="sm" /> },
+                    { label: "最終更新（正本）", value: "2026-11-21 17:10 JST" },
+                    { label: "出典", value: <SourceTag source={extra.source} compact /> },
                   ]}
                 />
               </MetaSection>
@@ -183,18 +209,6 @@ export function J06RiskDetail({ params }: { params: Record<string, string> }) {
           }
         />
       )}
-      <Modal
-        open={decide}
-        onClose={() => setDecide(false)}
-        title="判断を記録"
-        description="判断は監査ログと証跡に残ります。"
-        footer={<><Button variant="ghost" onClick={() => setDecide(false)}>キャンセル</Button><Button variant="primary" onClick={() => { setDecide(false); toast({ kind: "success", message: "判断を記録しました" }); }}>記録する</Button></>}
-      >
-        <div className="stack">
-          <TextArea label="判断の内容" required rows={4} placeholder="例: 対応期限を 12/5 に前倒しする" />
-          <Select label="判断に伴う状態" defaultValue={status} options={Object.entries(RISK_STATUS).map(([value, v]) => ({ value, label: v.label }))} />
-        </div>
-      </Modal>
     </ProjectLayout>
   );
 }

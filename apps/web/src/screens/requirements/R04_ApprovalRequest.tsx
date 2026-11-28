@@ -4,7 +4,8 @@ import { navigate, useRoute, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import { ARTIFACT_STATUS } from "../../lib/vocab";
 import { requirements, users } from "../../mocks/core";
-import { Banner, Button, Combobox, cx, DatePicker, EmptyState, Icon, IdLink, Modal, ProjectLayout, StatusBadge, TextArea, useToast } from "../../ui";
+import { Banner, Button, Combobox, cx, DatePicker, EmptyState, ExternalActor, Icon, IdLink, Modal, ProjectLayout, StatusBadge, TextArea, useToast } from "../../ui";
+import { formatDate } from "../../lib/format";
 import { RequirementListBody } from "./R01_RequirementList";
 import { org, project, reqPath } from "./common";
 
@@ -15,7 +16,7 @@ export function ApprovalRequest() {
   const ids = state === "allValid" ? ["REQ-0001", "REQ-0004", "REQ-0009"] : query.get("ids")?.split(",").filter(Boolean) ?? ["REQ-0005", "REQ-0007", "REQ-0012"];
   const targets = requirements.filter((r) => ids.includes(r.id));
   const [excluded, setExcluded] = useState<string[]>([]);
-  const [approvers, setApprovers] = useState<string[]>(["u-nakamura"]);
+  const [approvers, setApprovers] = useState<string[]>(["u-nakamura", "u-sato"]);
   const [due, setDue] = useState("2026-12-04");
   const [message, setMessage] = useState("CR-0003・CR-0004 に関連する要求です。受入基準をご確認のうえ承認をお願いします。");
   const [sent, setSent] = useState(state === "sent");
@@ -32,8 +33,8 @@ export function ApprovalRequest() {
         open
         onClose={close}
         size="lg"
-        title={sent ? "承認を依頼しました" : "要求の承認を依頼"}
-        description={sent ? undefined : "選択した要求をまとめて承認者に送ります。承認者は顧客ポータルまたは承認待ちの一覧から判断します。"}
+        title={sent ? "承認者に期限付き承認リンクを送りました" : "要求の承認を承認者に依頼"}
+        description={sent ? undefined : "選択した要求の承認を、実際の承認者に「期限付き承認リンク」で依頼します。承認者はアカウントなしで、本人確認のうえリンク先で承認・差戻しを行います。依頼した人が代わりに承認することはできません。"}
         footer={
           sent ? (
             <Button variant="primary" onClick={close}>要求一覧へ戻る</Button>
@@ -55,7 +56,28 @@ export function ApprovalRequest() {
         }
       >
         {sent ? (
-          <EmptyState icon="checkCircle" title={`${included.length || 3}件の要求の承認を依頼しました`} description="承認者に通知を送りました。期限の前日に自動でリマインドします。状況は各要求の「承認」欄で確認できます。" />
+          <div className="stack">
+            <EmptyState icon="checkCircle" title={`${included.length || 3}件の要求の承認を依頼しました`} description="承認者ごとに1回だけ使えるリンクを送りました。期限の前日に自動でリマインドします。結果は各要求の「承認と状態遷移」に記録されます。" />
+            <div className="table-wrap">
+              <table className="table compact">
+                <thead><tr><th>承認者</th><th>送信先</th><th>リンク</th><th>有効期限</th></tr></thead>
+                <tbody>
+                  {(approvers.length ? approvers : ["u-nakamura"]).map((uid, i) => {
+                    const u = users.find((x) => x.id === uid);
+                    const token = `req-${uid.replace("u-", "")}-${7301 + i}`;
+                    return (
+                      <tr key={uid}>
+                        <td><ExternalActor userId={uid} /></td>
+                        <td className="small">{u?.email || "—"}（メールの確認コードで本人確認）</td>
+                        <td><a className="id-link" href={`#${paths.approvalLink(token)}`}>/approve/{token}</a></td>
+                        <td className="small">{formatDate(due)} 23:59 まで・1回のみ</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           <div className="stack">
             {blocking.length ? (
@@ -112,9 +134,10 @@ export function ApprovalRequest() {
                 value={approvers}
                 onChange={setApprovers}
                 error={approverError}
-                options={users.filter((u) => u.roles.includes("顧客") || u.roles.includes("PM")).map((u) => ({ value: u.id, label: u.name, hint: u.kind === "external" ? `${u.company}（顧客）` : u.roles.join("・"), disabled: u.id === "u-takahashi", disabledReason: "作成者は承認者にできません" }))}
+                help="要求の作成者（高橋 健）は選べません。顧客と PM の承認が必要です"
+                options={users.filter((u) => u.roles.includes("顧客") || u.roles.includes("PM") || u.id === "u-takahashi").map((u) => ({ value: u.id, label: u.name, hint: u.kind === "external" ? `${u.company}（顧客）` : `${u.roles.join("・")}・外部IDで記録`, disabled: u.id === "u-takahashi", disabledReason: "作成者は承認者にできません" }))}
               />
-              <DatePicker label="期限" required value={due} min="2026-11-28" onChange={setDue} help="期限の前日に承認者へリマインドします" />
+              <DatePicker label="リンクの有効期限" required value={due} min="2026-11-28" onChange={setDue} help="期限を過ぎたリンクは使えなくなります。前日にリマインドします" />
             </div>
             <TextArea label="依頼メッセージ" value={message} onChange={setMessage} rows={3} maxLength={500} />
           </div>

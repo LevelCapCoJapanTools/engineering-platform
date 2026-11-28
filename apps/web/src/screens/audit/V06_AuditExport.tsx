@@ -1,10 +1,10 @@
 // 画面ID: V-06 監査パックの出力
 import { useEffect, useState } from "react";
 import { useScreenState } from "../../lib/router";
-import { ORG, PROJECT } from "../../lib/paths";
+import { ORG, PROJECT, paths } from "../../lib/paths";
 import { SHARE_STATUS } from "../../lib/vocab";
 import { releases, userById } from "../../mocks/core";
-import { exportHistory } from "../../mocks/audit";
+import { exportFiles, exportHistory } from "../../mocks/audit";
 import {
   Banner,
   Button,
@@ -28,12 +28,14 @@ import {
 
 const STEPS = ["範囲", "内容", "形式", "生成"];
 const CONTENTS = [
-  { key: "controls", label: "統制項目の対応表", desc: "統制項目ごとの充足状態と根拠の参照番号" },
+  { key: "controls", label: "統制項目の対応表", desc: "統制項目ごとの充足状態、根拠の参照番号、証跡の出典と同期日時" },
+  { key: "artifacts", label: "成果物（納入物）", desc: "納入物の一覧、版、SBOM、ダイジェスト" },
   { key: "evidence", label: "証跡", desc: "証跡ファイルとハッシュ" },
   { key: "manifests", label: "Evidence Manifest", desc: "署名付きの目録と検証結果" },
   { key: "approvals", label: "承認記録", desc: "承認者、ロール、時刻" },
   { key: "exceptions", label: "例外", desc: "理由、リスク、期限、承認者" },
-  { key: "log", label: "監査ログ", desc: "期間内のすべての判断と操作" },
+  { key: "log", label: "監査ログ", desc: "期間内のすべての判断と操作（連番・連鎖ハッシュ付き）" },
+  { key: "hashes", label: "ファイルハッシュの一覧と検証手順", desc: "パック内の全ファイルの SHA-256 と、評価者が独立に検証する手順" },
 ];
 
 export function AuditExport({ org = ORG, project = PROJECT }: { org?: string; project?: string }) {
@@ -149,7 +151,23 @@ export function AuditExport({ org = ORG, project = PROJECT }: { org?: string; pr
                   <Button variant="primary" icon="download" onClick={() => toast({ kind: "success", message: "ダウンロードを開始しました（モック）" })}>ダウンロード</Button>
                   <HashDisplay label="ZIP の SHA-256" value="4c1e9a7b20f3d8e5a6b19c0d2e7f84a3b5c6d7e8f90a1b2c3d4e5f60718293a4" />
                 </div>
-                <div className="card tight"><ShareLinkPanel /></div>
+                <Section title="パックに含まれるファイル" sub={`${exportFiles.length}ファイル。ハッシュは files.sha256 にも記録しています`} flush>
+                  <div className="table-wrap">
+                    <table className="table compact">
+                      <thead><tr><th>ファイル</th><th>SHA-256</th><th className="num">サイズ</th></tr></thead>
+                      <tbody>
+                        {exportFiles.map((f) => (
+                          <tr key={f.path}><td className="mono small">{f.path}</td><td><HashDisplay value={f.sha256} /></td><td className="num small">{f.size}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Section>
+                <div className="card tight stack">
+                  <ShareLinkPanel />
+                  <span className="small muted">共有は期限付きで、宛先のメール認証が必要です。閲覧・ダウンロード・拒否はすべて記録されます。</span>
+                  <div><Button size="sm" variant="ghost" icon="share" to={paths.shares(org, project)}>共有リンクとアクセス記録</Button></div>
+                </div>
               </div>
             )}
           </div>
@@ -163,7 +181,7 @@ export function AuditExport({ org = ORG, project = PROJECT }: { org?: string; pr
         </div>
       </div>
 
-      <Section title="過去の出力" sub="出力したファイルのハッシュと共有リンクの状態" flush>
+      <Section title="過去の出力" sub="出力したファイルのハッシュと共有リンクの状態" actions={<Button size="sm" variant="ghost" icon="share" to={paths.shares(org, project)}>共有リンクの管理</Button>} flush>
         {history.length ? (
           <div className="table-wrap">
             <table className="table">
