@@ -159,7 +159,17 @@ export type Role =
   | "顧客"
   // 外部
   | "評価者"
-  | "パートナー管理者";
+  | "パートナー管理者"
+  // 2026-11-28 追補: 取引の当事者（直接利用者）
+  | "受注側統括責任者"
+  | "案件窓口"
+  | "フリーエンジニア"
+  | "発注側プロジェクト責任者"
+  | "発注側担当者"
+  | "発注側承認者"
+  | "発注側検収者"
+  | "発注側署名者"
+  | "発注側管理者";
 
 /** audience: direct=本サービスに直接ログインする利用者、actor=外部システムで活動し外部IDで記録されるアクター、external=期限付きで閲覧する外部の人 */
 export type RoleAudience = "direct" | "actor" | "external";
@@ -181,6 +191,15 @@ export const ROLES: { name: Role; org: string; ops: string; audience: RoleAudien
   { name: "顧客", org: "発注元", ops: "要求承認、変更承認、受入（期限付きの承認リンクまたは顧客ポータル）", audience: "actor" },
   { name: "評価者", org: "外部", ops: "共有された監査パックの閲覧のみ（期限付き）", audience: "external" },
   { name: "パートナー管理者", org: "コンサル等", ops: "委任された顧客組織の横断管理", audience: "external" },
+  { name: "受注側統括責任者", org: "受注側（JV）", ops: "受注・予算・遂行・顧客への公開範囲の統括（JV責任者）", audience: "direct" },
+  { name: "案件窓口", org: "本サービス", ops: "顧客との往復、条件変更の折衝、リリース調整、受入の回収", audience: "direct" },
+  { name: "フリーエンジニア", org: "受託者", ops: "条件の確認と受諾、成果の提出、合意範囲の修正", audience: "direct" },
+  { name: "発注側プロジェクト責任者", org: "発注企業", ops: "自社の案件の判断、権限者の指名", audience: "direct" },
+  { name: "発注側担当者", org: "発注企業", ops: "公開された資料の閲覧、レビュー、資料の提出", audience: "direct" },
+  { name: "発注側承認者", org: "発注企業", ops: "申請の承認・差戻し（決裁上限の範囲）", audience: "direct" },
+  { name: "発注側検収者", org: "発注企業", ops: "納入物の受入試験と受入・差戻し", audience: "direct" },
+  { name: "発注側署名者", org: "発注企業", ops: "契約の締結（電子契約サービスで署名）", audience: "direct" },
+  { name: "発注側管理者", org: "発注企業", ops: "自社の閲覧者・承認者・検収者・署名者と代理の登録", audience: "direct" },
 ];
 
 /** 経営層（直接利用者）のロール */
@@ -357,3 +376,132 @@ export const PROVIDERS: Record<ProviderKey, { label: string; category: Connector
   azureImmutable: { label: "Azure Immutable Blob", category: "storage", status: "beta" },
   samlIdp: { label: "SAML IdP", category: "idp", status: "available" },
 };
+
+// ---- 2026-11-28 追補: 発注企業・受注側JV・フリーエンジニアの取引 ----
+
+/** 顧客との関係の型 */
+export const RELATIONSHIP = {
+  outsourcing: { label: "外注取引型", tone: "info" },
+  alliance: { label: "業務提携型", tone: "special" },
+} as const satisfies Record<string, StatusVocab>;
+export type Relationship = keyof typeof RELATIONSHIP;
+
+/** 受託者への発注（依頼書）の状態。受諾は版に紐付く */
+export const ORDER_STATUS = {
+  draft: { label: "作成中", tone: "neutral" },
+  offered: { label: "回答待ち", tone: "warn" },
+  negotiating: { label: "条件を相談中", tone: "info" },
+  accepted: { label: "受諾済み", tone: "pass" },
+  declined: { label: "辞退", tone: "neutral" },
+  superseded: { label: "新しい版あり", tone: "special" },
+  cancelled: { label: "中止", tone: "fail" },
+  completed: { label: "完了", tone: "pass" },
+} as const satisfies Record<string, StatusVocab>;
+export type OrderStatus = keyof typeof ORDER_STATUS;
+
+/** 受託者の提出 */
+export const SUBMISSION_STATUS = {
+  none: { label: "未提出", tone: "neutral" },
+  draft: { label: "下書き", tone: "neutral" },
+  submitted: { label: "提出済み", tone: "info" },
+  verifying: { label: "照合中", tone: "info" },
+  needsInfo: { label: "確認待ち", tone: "warn" },
+  resubmitted: { label: "再提出済み", tone: "info" },
+} as const satisfies Record<string, StatusVocab>;
+export type SubmissionStatus = keyof typeof SUBMISSION_STATUS;
+
+/** 委託元（受注側）による検収。最終顧客の受入とは別 */
+export const INSPECTION_STATUS = {
+  notStarted: { label: "検収前", tone: "neutral" },
+  inProgress: { label: "検収中", tone: "info" },
+  passed: { label: "検収済み", tone: "pass" },
+  partial: { label: "一部検収", tone: "special" },
+  returned: { label: "差戻し", tone: "fail" },
+} as const satisfies Record<string, StatusVocab>;
+export type InspectionStatus = keyof typeof INSPECTION_STATUS;
+
+/** 実環境への配備 */
+export const DEPLOY_STATUS = {
+  notReady: { label: "未準備", tone: "neutral" },
+  permitted: { label: "実行許可済み", tone: "info" },
+  requested: { label: "起動依頼済み", tone: "info" },
+  running: { label: "配備中", tone: "info" },
+  unconfirmed: { label: "結果未確認", tone: "warn" },
+  succeeded: { label: "配備済み（確認済み）", tone: "pass" },
+  failed: { label: "配備失敗", tone: "fail" },
+  rolledBack: { label: "切戻し済み", tone: "special" },
+} as const satisfies Record<string, StatusVocab>;
+export type DeployStatus = keyof typeof DEPLOY_STATUS;
+
+/** 最終顧客の受入 */
+export const CUSTOMER_ACCEPTANCE = {
+  notRequested: { label: "依頼前", tone: "neutral" },
+  requested: { label: "回答待ち", tone: "warn" },
+  partial: { label: "一部受入", tone: "special" },
+  accepted: { label: "受入済み", tone: "pass" },
+  returned: { label: "差戻し", tone: "fail" },
+} as const satisfies Record<string, StatusVocab>;
+export type CustomerAcceptance = keyof typeof CUSTOMER_ACCEPTANCE;
+
+/** 受託者への支払。顧客の受入待ちで支払期日を繰り下げない */
+export const PAYMENT_STATUS = {
+  notDue: { label: "支払予定", tone: "neutral" },
+  invoiced: { label: "請求受領", tone: "info" },
+  approved: { label: "支払承認済み", tone: "info" },
+  paid: { label: "支払済み", tone: "pass" },
+  mismatch: { label: "金額・期日の不一致", tone: "fail" },
+  overdue: { label: "支払期日超過", tone: "fail" },
+} as const satisfies Record<string, StatusVocab>;
+export type PaymentStatus = keyof typeof PAYMENT_STATUS;
+
+/** 問い合わせ（窓口の往復） */
+export const INQUIRY_STATUS = {
+  received: { label: "受付済み", tone: "info" },
+  askingCustomer: { label: "顧客へ確認中", tone: "warn" },
+  drafting: { label: "回答案を作成中", tone: "info" },
+  answered: { label: "回答済み", tone: "pass" },
+  onHold: { label: "保留（案件不明）", tone: "neutral" },
+  escalated: { label: "代理へ引継ぎ", tone: "special" },
+} as const satisfies Record<string, StatusVocab>;
+export type InquiryStatus = keyof typeof INQUIRY_STATUS;
+
+/** 顧客への公開 */
+export const DISCLOSURE_STATUS = {
+  hidden: { label: "非公開", tone: "neutral" },
+  draft: { label: "公開前の確認中", tone: "warn" },
+  published: { label: "公開中", tone: "pass" },
+  expired: { label: "期限切れ", tone: "neutral" },
+  stopped: { label: "公開停止", tone: "fail" },
+} as const satisfies Record<string, StatusVocab>;
+export type DisclosureStatus = keyof typeof DISCLOSURE_STATUS;
+
+/** 契約 */
+export const CONTRACT_STATUS = {
+  draft: { label: "案", tone: "neutral" },
+  negotiating: { label: "協議中", tone: "info" },
+  reviewed: { label: "確認済み（未締結）", tone: "warn" },
+  signing: { label: "署名待ち", tone: "warn" },
+  signed: { label: "締結済み", tone: "pass" },
+  declined: { label: "署名辞退", tone: "fail" },
+  superseded: { label: "改訂済み", tone: "neutral" },
+} as const satisfies Record<string, StatusVocab>;
+export type ContractStatus = keyof typeof CONTRACT_STATUS;
+
+/** 知的資産の扱い */
+export const IP_DISPOSITION = {
+  assign: { label: "譲渡", tone: "info" },
+  retain: { label: "保有継続", tone: "neutral" },
+  joint: { label: "共同保有", tone: "special" },
+  license: { label: "利用許諾", tone: "warn" },
+  undecided: { label: "未合意", tone: "fail" },
+} as const satisfies Record<string, StatusVocab>;
+export type IpDisposition = keyof typeof IP_DISPOSITION;
+
+/** 誰に見えるか（公開範囲の表示） */
+export const AUDIENCE = {
+  internal: { label: "社内のみ", tone: "neutral" },
+  customer: { label: "顧客に公開", tone: "info" },
+  alliance: { label: "提携先と共有", tone: "special" },
+  freelancer: { label: "受託者本人のみ", tone: "warn" },
+} as const satisfies Record<string, StatusVocab>;
+export type Audience = keyof typeof AUDIENCE;

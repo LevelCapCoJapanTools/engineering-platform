@@ -2,14 +2,14 @@
 import { setScreenState, useScreenState } from "../../lib/router";
 import { PRODUCT_NAME } from "../../lib/vocab";
 import { paths } from "../../lib/paths";
-import type { Severity } from "../../lib/vocab";
-import { Brand, Button, CapabilityCell, ProviderBadge, Tabs, Tag, ThemeToggle } from "../../ui";
+import type { Audience, Severity } from "../../lib/vocab";
+import { AudienceTag, Banner, Brand, Button, CapabilityCell, ProviderBadge, Tabs, Tag, ThemeToggle } from "../../ui";
 import { cx } from "../../ui";
 import { channels } from "../../mocks/notify";
 import { SeverityBadge } from "./parts";
 import "./notify.css";
 
-type Msg = { title: string; severity: Severity; facts: [string, string][]; due?: string; actions: string[]; link: string };
+type Msg = { title: string; severity: Severity; facts: [string, string][]; due?: string; actions: string[]; link: string; audience?: Audience; note?: string };
 
 const MESSAGES: Record<string, Msg> = {
   経営判断の依頼: {
@@ -33,6 +33,25 @@ const MESSAGES: Record<string, Msg> = {
     facts: [["最終成功", "11/24 18:00"], ["原因", "アクセストークンの失効"], ["対応", "接続者（石井 浩二）の再認可"]],
     actions: [],
     link: "連携の詳細を開く",
+  },
+  受託者への依頼: {
+    title: "サンプルソフト株式会社から新しい依頼が届いています",
+    severity: "medium",
+    facts: [["依頼", "操作ログの検索画面"], ["回答期限", "2026/11/30"]],
+    actions: [],
+    link: "本人確認して内容を見る",
+    audience: "freelancer",
+    note: "宛先は受託者本人のみ。報酬・条件・顧客名は本文に入れず、本人確認付きリンクの先で表示します。承認・受諾のボタンは置きません（リンク先で版を確認して操作）",
+  },
+  顧客への申請: {
+    title: "受発注システム刷新: 追加見積（CR-0004）への回答のお願い",
+    severity: "high",
+    facts: [["申請", "追加見積 v2（契約額への影響 +120万円）"], ["回答者", "小松 恵 様（承認者）"]],
+    due: "2026/12/02",
+    actions: [],
+    link: "内容を確認して回答する",
+    audience: "customer",
+    note: "承認済みの公開範囲の項目だけを載せます。JV内部予算・外注単価・粗利は載せません。回答は本人確認付きリンクの先で、申請の版を確認してから行います",
   },
   "マイルストーンの遅延": {
     title: "MS-104 v1.4.0 納入の予測が 7 日後ろ倒し",
@@ -68,6 +87,9 @@ export function N09ChatCards() {
       <p className="small muted" style={{ marginBottom: 12 }}>
         同じ通知が各チャネルでどう見えるかを並べています。ボタンは双方向の操作に対応したチャネルだけに表示し、送信専用のチャネルには詳細へのリンクだけを載せます。ボタンからの操作は、署名検証と本人のロール照合を通った場合だけ記録されます。
       </p>
+      {m.audience ? (
+        <Banner tone="info" title={<span className="row" style={{ ["--gap" as string]: "8px" }}>宛先の範囲 <AudienceTag value={m.audience} /></span>}>{m.note}</Banner>
+      ) : null}
       <Tabs value={kind} onChange={(v) => setScreenState(v)} tabs={Object.keys(MESSAGES).map((k) => ({ value: k, label: k }))} />
       <div className="nt-chat-grid" style={{ marginTop: 16 }}>
         {SURFACES.map((s) => {

@@ -15,6 +15,8 @@ import { S09Actors } from "./S09_Actors";
 import { S10Scopes } from "./S10_Scopes";
 import { S11AiEval } from "./S11_AiEval";
 import { S12Usage } from "./S12_Usage";
+import { S13TradeScopes } from "./S13_TradeScopes";
+import { S14AiMediation } from "./S14_AiMediation";
 
 const group = "6.10 設定";
 
@@ -37,4 +39,6 @@ export const settingsScreens: ScreenDef[] = [
   { id: "S-10", title: "閲覧範囲と判断権限", path: paths.scopes(":org"), group, priority: "Must", states: ["通常", "未設定あり", "閲覧のみ", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S10Scopes org={p.org} />}</Keyed> },
   { id: "S-11", title: "AIの評価", path: paths.aiEval(":org"), group, priority: "Should", states: ["通常", "劣化あり", "空", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S11AiEval org={p.org} />}</Keyed> },
   { id: "S-12", title: "利用量", path: paths.usage(":org"), group, priority: "Should", states: ["通常", "上限間近", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S12Usage org={p.org} />}</Keyed> },
+  { id: "S-13", title: "取引関係と案件の権限", path: paths.tradeScopes(":org"), group, priority: "Must", states: ["通常", "試験失敗あり", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S13TradeScopes org={p.org} />}</Keyed> },
+  { id: "S-14", title: "AI仲介の記録", path: paths.aiMediation(":org"), group, priority: "Must", states: ["通常", "モデル停止中", "記録なし", "読み込み中", "エラー"], render: (p) => <Keyed>{() => <S14AiMediation org={p.org} />}</Keyed> },
 ];

@@ -32,7 +32,7 @@ import {
   useToast,
 } from "../../ui";
 import type { TraceEdge, TraceNode } from "../../ui";
-import { useScreenState } from "../../lib/router";
+import { Link, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
 import { CHANGE_STATUS } from "../../lib/vocab";
 import type { ChangeStatus } from "../../lib/vocab";
@@ -40,6 +40,8 @@ import type { AiFinding, Approver } from "../../lib/types";
 import { aiFindings, changes, userById } from "../../mocks/core";
 import { PLAN_SOURCE, changeDetails, changeImpacts } from "../../mocks/planning";
 import { DecisionLink, SourceBar, orgOf, projectOf } from "./shared";
+import { changeAgreements } from "../../mocks/desk";
+import { yen } from "../../lib/format";
 
 export const J08_STATES = ["影響分析中", "承認待ち", "承認済み", "反映済み", "却下", "AI分析中", "AI無効", "読み込み中", "取得失敗"];
 
@@ -89,6 +91,7 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
   ];
 
   const impact = changeImpacts[cr.id] ?? changeImpacts["CR-0004"];
+  const agreement = changeAgreements.find((a) => a.id === cr.id);
   const primary = impact.decision ? <Button variant="primary" icon="inbox" to={paths.decision(org, impact.decision)}>経営判断を開く</Button> : null;
 
   return (
@@ -135,6 +138,28 @@ export function J08ChangeDetail({ params }: { params: Record<string, string> }) 
                   act={<span className="row" style={{ ["--gap" as string]: "8px" }}>{d.approvers.map((a) => <ExternalActor key={a.role} userId={a.user_id} role={a.role} />)}</span>}
                   note="変更の承認は PM と顧客が行います。経営層は追加費用の受け入れなど投資の判断を行います"
                 />
+              </Section>
+              <Section
+                title="顧客との条件と委託条件"
+                sub="顧客との契約と、受託者（フリーエンジニア）への委託条件は別々に合意します。顧客だけが同意しても委託範囲は増えません"
+                actions={agreement ? <Button size="sm" icon="message" to={paths.deskChange(org, agreement.id)}>窓口で再合意を進める</Button> : undefined}
+              >
+                {agreement ? (
+                  <div className="table-wrap">
+                    <table className="table compact">
+                      <thead><tr><th>契約</th><th>金額</th><th>期限への影響</th><th>状態</th></tr></thead>
+                      <tbody>
+                        <tr><td className="small">顧客との条件（{agreement.customer.contract_ref}）</td><td className="small">{yen(agreement.customer.price)}</td><td className="small">{agreement.customer.due_impact}</td><td><Tag square tone={agreement.customer.status === "agreed" ? "pass" : "warn"}>{agreement.customer.status === "agreed" ? "合意済み" : "回答待ち"}</Tag></td></tr>
+                        <tr><td className="small">委託条件（{agreement.commission.contract_ref}）</td><td className="small">{yen(agreement.commission.extra_fee)}（社内のみ）</td><td className="small">{agreement.commission.due_impact}</td><td><Tag square tone={agreement.commission.status === "agreed" ? "pass" : "warn"}>{agreement.commission.status === "agreed" ? "合意済み" : "回答待ち"}</Tag></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="stack" style={{ ["--gap" as string]: "6px" }}>
+                    <span className="small">この変更は、受託者への発注の範囲・報酬・期限に影響しません。委託条件の再合意は不要です。</span>
+                    <span className="tiny muted">受託者への発注に影響する変更は、案件窓口が両方の条件を回収します（例: <Link to={paths.deskChange(org, changeAgreements[0].id)}>{changeAgreements[0].id} {changeAgreements[0].title}</Link>）。</span>
+                  </div>
+                )}
               </Section>
               <Tabs value={tab} onChange={setTab} tabs={[{ value: "content", label: "内容" }, { value: "impact", label: "影響分析", count: d.confirmed.length + findings.length }, { value: "history", label: "履歴" }, { value: "comments", label: "コメント", count: 1 }]} />
               {tab === "content" ? (

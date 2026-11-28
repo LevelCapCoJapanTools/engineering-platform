@@ -17,6 +17,13 @@ import { executiveScreens } from "./executive";
 import { portfolioScreens } from "./portfolio";
 import { connectorScreens } from "./connectors";
 import { notifyScreens } from "./notify";
+import { freelancerScreens } from "./freelancer";
+import { deskScreens } from "./desk";
+import { orderScreens } from "./orders";
+import { disclosureScreens } from "./disclosure";
+import { contractScreens } from "./contracts";
+import { appHandoverScreens } from "./apphandover";
+import { deliveryScreens } from "./delivery";
 
 export const GROUP_ORDER = [
   "6.1 公開サイト",
@@ -36,6 +43,13 @@ export const GROUP_ORDER = [
   "6.15 経営: 投資と配分",
   "6.16 連携と同期",
   "6.17 通知とオンコール",
+  "6.18 フリーエンジニア",
+  "6.19 案件窓口",
+  "6.20 受託者への発注と採算",
+  "6.21 顧客への公開と共同経営",
+  "6.22 契約と知的資産",
+  "6.23 アプリの配信名義と引き渡し",
+  "6.24 提出から配備・受入まで",
   "開発用",
 ];
 
@@ -56,5 +70,12 @@ export const screens: ScreenDef[] = [
   ...systemScreens,
   ...connectorScreens,
   ...notifyScreens,
+  ...freelancerScreens,
+  ...deskScreens,
+  ...orderScreens,
+  ...disclosureScreens,
+  ...contractScreens,
+  ...appHandoverScreens,
+  ...deliveryScreens,
   ...devScreens,
 ];

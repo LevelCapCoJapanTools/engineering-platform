@@ -13,6 +13,7 @@ import type { StatusVocab } from "../lib/vocab";
 import { currentUser, notifications, orgs, projectBySlug, projects } from "../mocks/core";
 import { relativeTime } from "../lib/format";
 import { connectors, decisions, incidents } from "../mocks/portfolio";
+import { inquiries } from "../mocks/engagement";
 
 // ---------- テーマ ----------
 type Theme = "light" | "dark";
@@ -223,6 +224,10 @@ export type NavKey =
   | "connectors" | "notify" | "oncall" | "incidents"
   | "schedule" | "milestones" | "closure" | "documents" | "defects" | "scans" | "builds"
   | "gateSettings" | "baselines" | "shares"
+  | "desk" | "orders" | "partners" | "settlements"
+  | "workBreakdown" | "projectCost" | "relationship" | "disclosure" | "jointFinance"
+  | "contracts" | "ipAssets" | "licenses" | "rightsHandover" | "appHandover"
+  | "submissionsMatch" | "tradeEvidence"
   | "overview" | "sow" | "plan" | "progress" | "risks" | "changes" | "meetings"
   | "requirements" | "design" | "trace" | "verification"
   | "gates" | "pulls" | "exceptions" | "releases"
@@ -233,6 +238,7 @@ type NavItem = { key: NavKey; label: string; icon: IconName; to: string; count?:
 function orgNav(org: string): { group: string; items: NavItem[] }[] {
   const pendingDecisions = decisions.filter((d) => d.status === "pending").length;
   const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
+  const openInquiries = inquiries.filter((q) => q.status !== "answered").length;
   const brokenConnectors = connectors.filter((c) => c.status === "failing" || c.status === "authExpired").length;
   return [
     {
@@ -252,6 +258,15 @@ function orgNav(org: string): { group: string; items: NavItem[] }[] {
         { key: "capacity", label: "要員・予算", icon: "users", to: paths.capacity(org) },
         { key: "roadmap", label: "ロードマップ", icon: "map", to: paths.roadmap(org) },
         { key: "benefits", label: "便益・成果", icon: "trendingUp", to: paths.benefits(org) },
+      ],
+    },
+    {
+      group: "取引と窓口",
+      items: [
+        { key: "desk", label: "案件窓口", icon: "message", to: paths.desk(org), count: openInquiries, alert: openInquiries > 0 },
+        { key: "orders", label: "受託者への発注", icon: "send", to: paths.orders(org) },
+        { key: "partners", label: "外注候補と稼働枠", icon: "users", to: paths.partners(org) },
+        { key: "settlements", label: "発注・支払の照合", icon: "creditCard", to: paths.settlements(org) },
       ],
     },
     {
@@ -289,6 +304,26 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
       ],
     },
     {
+      group: "顧客と外注",
+      items: [
+        { key: "relationship", label: "顧客との関係", icon: "building", to: paths.relationship(org, pr) },
+        { key: "disclosure", label: "顧客への公開", icon: "eye", to: paths.disclosure(org, pr) },
+        { key: "jointFinance", label: "共同事業の収支", icon: "scale", to: paths.jointFinance(org, pr) },
+        { key: "workBreakdown", label: "委託単位への分解", icon: "layers", to: paths.workBreakdown(org, pr) },
+        { key: "projectCost", label: "外注原価・粗利", icon: "barChart", to: paths.projectCost(org, pr) },
+      ],
+    },
+    {
+      group: "契約と引き渡し",
+      items: [
+        { key: "contracts", label: "契約書庫", icon: "fileCheck", to: paths.contracts(org, pr) },
+        { key: "ipAssets", label: "知的資産", icon: "package", to: paths.ipAssets(org, pr) },
+        { key: "licenses", label: "再委託・ライセンス", icon: "book", to: paths.licenses(org, pr) },
+        { key: "rightsHandover", label: "権利の引渡明細", icon: "signature", to: paths.rightsHandover(org, pr) },
+        { key: "appHandover", label: "アプリの引き渡し", icon: "rocket", to: paths.appHandover(org, pr) },
+      ],
+    },
+    {
       group: "要求と設計",
       items: [
         { key: "requirements", label: "要求", icon: "list", to: paths.requirements(org, pr) },
@@ -313,6 +348,7 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
       group: "リリース",
       items: [
         { key: "releases", label: "リリースと受入", icon: "rocket", to: paths.releases(org, pr) },
+        { key: "submissionsMatch", label: "提出と検証の照合", icon: "checkSquare", to: paths.submissionsMatch(org, pr) },
         { key: "baselines", label: "構成管理", icon: "commit", to: paths.baselines(org, pr) },
       ],
     },
@@ -324,6 +360,7 @@ function projectNav(org: string, pr: string): { group: string; items: NavItem[] 
         { key: "auditLog", label: "監査ログ", icon: "history", to: paths.auditLog(org, pr) },
         { key: "auditExport", label: "監査パックの出力", icon: "package", to: paths.auditExport(org, pr) },
         { key: "shares", label: "共有リンク", icon: "share", to: paths.shares(org, pr) },
+        { key: "tradeEvidence", label: "取引の証跡", icon: "trace", to: paths.tradeEvidence(org, pr) },
       ],
     },
   ];
@@ -567,6 +604,8 @@ export function SettingsNav({ org, active }: { org: string; active: string }) {
     { key: "scopes", label: "閲覧範囲と判断権限", to: paths.scopes(org), icon: "eye" },
     { key: "aiEval", label: "AIの評価", to: paths.aiEval(org), icon: "gauge" },
     { key: "signing", label: "署名と検証", to: paths.signing(org), icon: "signature" },
+    { key: "tradeScopes", label: "取引関係と案件の権限", to: paths.tradeScopes(org), icon: "lock" },
+    { key: "aiMediation", label: "AI仲介の記録", to: paths.aiMediation(org), icon: "sparkles" },
     { key: "billing", label: "プランと請求", to: paths.billing(org), icon: "creditCard" },
     { key: "usage", label: "利用量", to: paths.usage(org), icon: "barChart" },
   ];

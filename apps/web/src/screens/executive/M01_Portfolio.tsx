@@ -31,6 +31,7 @@ import {
 } from "../../ui";
 import type { Column } from "../../ui";
 import { BudgetCell, PersonRef } from "./parts";
+import { PortfolioCostCell } from "../orders/embeds";
 
 export function Portfolio() {
   const state = useScreenState();
@@ -62,6 +63,7 @@ export function Portfolio() {
     { key: "health", header: "健全性", sortValue: (h) => ["offTrack", "atRisk", "unknown", "onTrack"].indexOf(h.health), render: (h) => <StatusBadge vocab={HEALTH[h.health]} size="sm" /> },
     { key: "end", header: "終了（当初→予測）", sortValue: (h) => h.slip_days, render: (h) => <PlanDates baseline={h.baseline_end} forecast={h.forecast_end} compact /> },
     { key: "cost", header: "予測コスト／予算", sortValue: (h) => h.forecast_cost - h.budget, render: (h) => <BudgetCell h={h} /> },
+    { key: "outsourcing", header: "外注原価・粗利見込（社内のみ）", sortValue: (h) => h.slug, render: (h) => <PortfolioCostCell slug={h.slug} /> },
     { key: "actual", header: "実績コスト", align: "right", sortValue: (h) => h.actual_cost, render: (h) => <span className="small">{yenM(h.actual_cost)}</span>, defaultHidden: true },
     { key: "evidence", header: "証跡準備度", sortValue: (h) => h.evidence_readiness, render: (h) => <CoverageMeter value={h.evidence_readiness} total={100} compact /> },
     { key: "risks", header: "未解決リスク", align: "right", sortValue: (h) => projectBySlug(h.slug).open_risks, render: (h) => { const n = projectBySlug(h.slug).open_risks; return n ? <span className="strong">{n}</span> : <span className="muted">0</span>; } },

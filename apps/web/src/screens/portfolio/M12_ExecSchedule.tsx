@@ -8,6 +8,7 @@ import { calendarEvents, connectors, decisions, milestones } from "../../mocks/p
 import { recurringExceptions } from "../../mocks/investment";
 import { AppLayout, Banner, Button, ConfidenceTag, crumbs, EmptyState, ErrorState, Icon, IdLink, PageHeader, Section, Segmented, Select, Skeleton, SourceTag, StaleDataNotice, Tag } from "../../ui";
 import { RoleNote, userName } from "./parts";
+import { ScheduleConflicts } from "../orders/embeds";
 
 type Item = {
   key: string;
@@ -175,6 +176,8 @@ export function ExecSchedule() {
             </div>
           </Section>
         )}
+
+        {state === "empty" ? null : <ScheduleConflicts org={org} />}
 
         <div className="grid cols-2">
           <Banner tone="info" title="取り込む予定">

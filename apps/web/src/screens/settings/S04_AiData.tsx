@@ -6,6 +6,7 @@ import { DATA_CLASS } from "../../lib/vocab";
 import type { DataClass } from "../../lib/vocab";
 import { aiAgents, aiFeatures, aiForbidden, aiSendLog, aiSubprocessors, aiToolAllowlist, projectDataClass } from "../../mocks/settings";
 import { ActorLabel, Banner, Button, DataClassBadge, DataTable, ErrorState, Section, Select, SettingsLayout, Skeleton, Tag, Timestamp, Toggle, useToast } from "../../ui";
+import { CustomerDataAiSection } from "./trade2";
 
 const classOptions = (Object.keys(DATA_CLASS) as DataClass[]).map((k) => ({ value: k, label: DATA_CLASS[k].label }));
 
@@ -182,6 +183,7 @@ export function S04AiData({ org = ORG }: { org?: string }) {
               empty={<div className="empty"><h3>送信ログはありません</h3><p>AI機能が使われると、ここに記録されます。</p></div>}
             />
           </div>
+          <CustomerDataAiSection org={org} enabled={enabled} />
         </>
       )}
     </SettingsLayout>

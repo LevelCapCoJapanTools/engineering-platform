@@ -6,3 +6,4 @@ export * from "./overlay";
 export * from "./domain";
 export * from "./layout";
 export * from "./sync";
+export * from "./trade";

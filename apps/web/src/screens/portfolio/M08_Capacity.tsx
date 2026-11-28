@@ -8,6 +8,7 @@ import { connectors, decisions, projectHealth } from "../../mocks/portfolio";
 import { CAPACITY_MONTHS, ORG_BUDGET_CAP, budgetSource, capacityRoles, outsourcingOptions } from "../../mocks/investment";
 import { AppLayout, Banner, Button, crumbs, EmptyState, ErrorState, IdLink, PageHeader, Section, Segmented, Skeleton, SourceTag, StatCard, Tag } from "../../ui";
 import { ManualSourceTag, MiniBar, RoleNote, userName } from "./parts";
+import { OutsourcingAllotments } from "../orders/embeds";
 
 const monthLabel = (m: string) => `${Number(m.slice(5, 7))}月`;
 
@@ -135,6 +136,7 @@ export function Capacity() {
               <StatCard label="完了時の予測" icon="trendingUp" value={yenM(forecast)} delta={`予算差 ${forecast - budget > 0 ? "+" : ""}${yenM(forecast - budget)}`} tone={forecast > budget ? "warn" : "good"} />
             </div>
             {forecast > budget ? <Banner tone="warn" title="予測が承認済み予算を超えています">受発注システム刷新で 220 万円の超過予測です。追加費用は変更要求（CR-0004）とあわせて判断してください。</Banner> : null}
+            <OutsourcingAllotments org={org} />
             <Section title="案件別の予算・消費・予測" flush>
               <div className="table-wrap">
                 <table className="table">

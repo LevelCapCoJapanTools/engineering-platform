@@ -25,6 +25,15 @@ import type {
   ProviderKey,
   Severity,
   SyncStatus,
+  Audience,
+  CustomerAcceptance,
+  DeployStatus,
+  InquiryStatus,
+  InspectionStatus,
+  OrderStatus,
+  PaymentStatus,
+  Relationship,
+  SubmissionStatus,
 } from "./vocab";
 
 export type UserKind = "member" | "external" | "agent";
@@ -480,4 +489,96 @@ export type Incident = {
   escalation_level: number;
   related_release?: string;
   dedup_key: string;
+};
+
+
+// ---- 2026-11-28 追補: 発注企業・受注側JV・フリーエンジニアの取引 ----
+
+/** 案件と顧客企業の関係（案件ごとに型と公開範囲を持つ） */
+export type Engagement = {
+  project: string;
+  customer_company: string;
+  relationship: Relationship;
+  /** 受注側統括責任者（JV責任者） */
+  jv_lead_id: string;
+  /** 発注側プロジェクト責任者 */
+  customer_lead_id: string;
+  contract_amount: number;
+  /** JV内部予算（顧客には初期非公開） */
+  internal_budget: number;
+  /** 受託者への委託費の合計（顧客には初期非公開） */
+  commission_total: number;
+  contract_period: { start: string; end: string };
+  /** 業務提携型の共同費目（合意した費目だけ） */
+  joint_items?: { name: string; budget: number; actual: number; share: { company: string; ratio: number }[] }[];
+};
+
+/** 受託者への発注条件の1つの版。受諾は版に紐付く */
+export type OrderTerms = {
+  version: number;
+  issued_at: string;
+  scope: string[];
+  out_of_scope: string[];
+  deliverable: string;
+  delivery_to: string;
+  due: string;
+  completion_criteria: string[];
+  inspection_due: string;
+  fee: number;
+  payment_due: string;
+  payment_method: string;
+  change_note?: string;
+};
+
+export type Order = {
+  id: string;
+  project: string;
+  title: string;
+  freelancer_id: string;
+  /** 依頼元（受注側の会社） */
+  client_company: string;
+  status: OrderStatus;
+  terms: OrderTerms[];
+  accepted_version?: number;
+  accepted_at?: string;
+  milestone_id?: string;
+  next_actor: "freelancer" | "desk" | "customer" | "inspector" | "none";
+  next_action: string;
+  next_due?: string;
+  submission: SubmissionStatus;
+  inspection: InspectionStatus;
+  deploy: DeployStatus;
+  customer_acceptance: CustomerAcceptance;
+  payment: PaymentStatus;
+};
+
+export type Submission = {
+  id: string;
+  order_id: string;
+  version: number;
+  submitted_at: string;
+  external_url: string;
+  commit_sha: string;
+  artifact?: string;
+  checks: string;
+  notes?: string;
+  verification: "matched" | "pending" | "mismatch" | "unavailable";
+};
+
+export type Inquiry = {
+  id: string;
+  project: string;
+  order_id?: string;
+  from: "freelancer" | "customer" | "jv";
+  asker_id: string;
+  subject: string;
+  body: string;
+  status: InquiryStatus;
+  owner_id: string;
+  deputy_id?: string;
+  due: string;
+  answer?: string;
+  answered_at?: string;
+  sources?: string[];
+  audience: Audience;
 };

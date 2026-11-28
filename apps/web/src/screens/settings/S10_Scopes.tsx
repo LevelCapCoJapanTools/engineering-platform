@@ -8,6 +8,7 @@ import type { DataClass } from "../../lib/vocab";
 import { userById } from "../../mocks/core";
 import { scopeRows, sodRules } from "../../mocks/settings";
 import { Banner, Button, Combobox, DataClassBadge, ErrorState, Modal, RoleBadge, Section, Select, SettingsLayout, Skeleton, Tag, Toggle, useToast } from "../../ui";
+import { ScopeApplicationSection } from "./trade2";
 
 export function S10Scopes({ org = ORG }: { org?: string }) {
   const state = useScreenState();
@@ -108,6 +109,7 @@ export function S10Scopes({ org = ORG }: { org?: string }) {
               </table>
             </div>
           </Section>
+          <ScopeApplicationSection org={org} />
         </>
       )}
 

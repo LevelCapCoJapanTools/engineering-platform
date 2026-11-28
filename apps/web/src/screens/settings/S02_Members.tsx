@@ -33,6 +33,7 @@ import {
 } from "../../ui";
 import type { Column } from "../../ui";
 import { daysUntil } from "../../lib/format";
+import { ExternalInvitesSection } from "./trade2";
 
 const DIRECT_ROLES = ROLES.filter((r) => r.audience === "direct");
 
@@ -222,6 +223,7 @@ export function S02Members({ org = ORG }: { org?: string }) {
               </div>
             )}
           </Section>
+          <ExternalInvitesSection org={org} />
         </>
       )}
 

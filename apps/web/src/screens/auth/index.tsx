@@ -18,7 +18,7 @@ const group = "6.2 認証とオンボーディング";
 
 export const authScreens: ScreenDef[] = [
   { id: "A-01", title: "サインイン", path: paths.signin(), group, priority: "Must", states: ["default", "authenticating", "mfa", "failed", "noOrg"], render: () => <SignIn /> },
-  { id: "A-02", title: "招待の受諾", path: paths.invite(":token"), group, priority: "Must", states: ["valid", "customer", "expired", "alreadyMember", "otherAccount"], render: () => <Invite /> },
+  { id: "A-02", title: "招待の受諾", path: paths.invite(":token"), group, priority: "Must", states: ["valid", "customer", "freelancer", "forwarded", "revoked", "expired", "alreadyMember", "otherAccount"], render: () => <Invite /> },
   { id: "A-03", title: "組織の選択", path: paths.orgs(), group, priority: "Must", states: ["default", "empty", "loading", "error"], render: () => <Orgs /> },
   { id: "A-04", title: "組織の作成", path: paths.onboardingOrg(), group, priority: "Must", states: ["default", "error"], render: () => <OrgCreate /> },
   { id: "A-05", title: "コードホスティングの接続", path: paths.onboardingGithub(), group, priority: "Must", states: ["notInstalled", "installing", "done", "failed"], render: () => <GitHubInstall /> },

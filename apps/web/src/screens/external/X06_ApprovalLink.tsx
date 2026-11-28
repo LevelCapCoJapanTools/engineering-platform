@@ -80,6 +80,10 @@ export function X06ApprovalLink({ token }: { token: string }) {
         <span className="row" style={{ ["--gap" as string]: "8px" }}><Tag square>{TARGET.kind}</Tag><Tag square>対象の版 {TARGET.version}</Tag><span className="tiny muted">期限 {TARGET.expires}</span></span>
       </div>
 
+      <p className="tiny muted row" style={{ ["--gap" as string]: "6px" }}>
+        <Icon name="lock" size={12} />このリンクは {TARGET.id} の {TARGET.version}（内容のハッシュ <span className="mono">{TARGET.sha.slice(0, 12)}…</span>）だけに使えます。別の版や別の申請の承認・受入には使えません。
+      </p>
+
       {changed ? (
         <Banner tone="warn" title="依頼の後に対象の内容が変わりました">
           依頼時の版（v2）から v3 に更新されたため、このリンクでは承認できません。依頼者が新しい版で依頼し直すと、新しいリンクが届きます。

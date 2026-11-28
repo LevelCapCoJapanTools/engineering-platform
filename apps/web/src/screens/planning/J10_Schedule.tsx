@@ -30,6 +30,7 @@ import { calendarEvents, decisions, milestones } from "../../mocks/portfolio";
 import { CAL_SOURCE, PLAN_SOURCE, forecastSnapshots, scheduleChanges } from "../../mocks/planning";
 import type { ScheduleChange } from "../../mocks/planning";
 import { DecisionLink, SourceBar, orgOf, projectOf } from "./shared";
+import { ScheduleConflicts } from "../orders/embeds";
 
 export const J10_STATES = ["既定", "過去の基準日", "同期が古い", "読み込み中", "取得失敗"];
 
@@ -212,6 +213,7 @@ export function J10Schedule({ params }: { params: Record<string, string> }) {
               </table>
             </div>
           </Section>
+          <ScheduleConflicts org={org} project={pr} />
           <p className="tiny muted">予測の更新は計画の改訂ではありません。確約日を動かすには計画の改訂と顧客の合意が必要です（<Link to={paths.plan(org, pr)}>プロジェクト計画</Link>）。</p>
         </>
       )}

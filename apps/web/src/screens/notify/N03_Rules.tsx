@@ -10,6 +10,7 @@ import {
 import { channelById, channels, NOTIFY_EVENTS, notifyRules } from "../../mocks/notify";
 import type { NotifyRule } from "../../mocks/notify";
 import { NotifyTabs, SeverityBadge, useOrg } from "./parts";
+import { AudienceRulesSection, RevocationSection } from "./audience";
 
 const AGG: Record<NotifyRule["aggregate"], string> = { none: "集約しない", "15m": "15 分ごとに集約", "1h": "1 時間ごとに集約", daily: "1 日 1 回の要約" };
 
@@ -106,6 +107,9 @@ export function N03Rules() {
               </div>
             )}
           </Section>
+
+          <AudienceRulesSection org={org} />
+          <RevocationSection />
 
           <div className="grid cols-2">
             <Section title="時間帯とタイムゾーン">

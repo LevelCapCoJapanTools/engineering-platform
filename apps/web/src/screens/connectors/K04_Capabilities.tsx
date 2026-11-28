@@ -6,7 +6,8 @@ import { ORG, paths } from "../../lib/paths";
 import { CAPABILITY, CONNECTOR_CATEGORY } from "../../lib/vocab";
 import type { CapabilityLevel, ConnectorCategory } from "../../lib/vocab";
 import { capabilityGroups } from "../../mocks/connectors";
-import { AppLayout, Banner, CapabilityCell, crumbs, ErrorState, PageHeader, ProviderBadge, Section, Segmented, Skeleton } from "../../ui";
+import { referenceCapabilities } from "../../mocks/common2";
+import { AppLayout, Banner, Button, CapabilityCell, crumbs, ErrorState, PageHeader, ProviderBadge, Section, Segmented, Skeleton } from "../../ui";
 
 export function K04Capabilities() {
   const state = useScreenState();
@@ -69,6 +70,33 @@ export function K04Capabilities() {
               </div>
             </Section>
           ))}
+          {cat === "all" || cat === "scm" ? (
+            <Section
+              title="成果参照の取得（受託者の提出の照合）"
+              sub="依頼ごとに、外部の参照・提出時の確定版・取得できた検証結果を結ぶための能力です。取れない項目は照合でも「未確認」と表示します"
+              actions={<Button size="sm" iconRight="arrowRight" to={paths.referenceMatching(org)}>照合の一覧</Button>}
+              flush
+            >
+              <div className="table-wrap">
+                <table className="table kn-matrix">
+                  <thead><tr><th>サービス</th><th>参照の取得</th><th>確定版の固定</th><th>CI 結果</th><th>レビュー</th><th>必須化</th><th>制限</th></tr></thead>
+                  <tbody>
+                    {referenceCapabilities.map((r) => (
+                      <tr key={r.provider}>
+                        <td><ProviderBadge provider={r.provider} showStatus /></td>
+                        <td><CapabilityCell level={r.ref} /></td>
+                        <td><CapabilityCell level={r.pinnedSha} /></td>
+                        <td><CapabilityCell level={r.ciResult} note={r.limit} /></td>
+                        <td><CapabilityCell level={r.review} /></td>
+                        <td><CapabilityCell level={r.gate} /></td>
+                        <td className="tiny muted">{r.limit ?? "—"}（最終試験 {r.verified_at.replace(/-/g, "/")}）</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          ) : null}
           <p className="tiny muted">チャットへの投稿の成功は、担当者に届いたことを意味しません。応答の保証が必要な通知はオンコール管理サービスを経由します。</p>
         </div>
       )}

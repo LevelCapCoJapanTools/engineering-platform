@@ -39,7 +39,7 @@ export function fakeSha(seed: string): string {
 export const TODAY = "2026-11-27";
 
 export const users: User[] = [
-  { id: "u-kimura", name: "木村 達也", initials: "木", email: "kimura@sample-soft.example", roles: ["経営者", "案件スポンサー"], title: "代表取締役", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-27T10:20:00+09:00" },
+  { id: "u-kimura", name: "木村 達也", initials: "木", email: "kimura@sample-soft.example", roles: ["経営者", "案件スポンサー", "受注側統括責任者"], title: "代表取締役", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-27T10:20:00+09:00" },
   { id: "u-mori", name: "森 由紀子", initials: "森", email: "mori@sample-soft.example", roles: ["CTO", "案件スポンサー"], title: "取締役 CTO", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-27T09:50:00+09:00" },
   { id: "u-ishii", name: "石井 浩二", initials: "石", email: "ishii@sample-soft.example", roles: ["事業部長"], title: "受託開発事業部長", account: true, kind: "member", status: "active", joined_at: "2025-04-01", last_active_at: "2026-11-26T18:10:00+09:00" },
   { id: "u-okada", name: "岡田 真理", initials: "岡", email: "okada@sample-soft.example", roles: ["事業責任者"], title: "自社サービス事業責任者", account: true, kind: "member", status: "invited", joined_at: undefined },
@@ -52,8 +52,16 @@ export const users: User[] = [
   { id: "u-yamamoto", name: "山本 結衣", initials: "山", email: "yamamoto@sample-soft.example", roles: ["組織管理者", "ポリシー管理者"], account: true, kind: "member", status: "active", github: "yui-yamamoto", joined_at: "2025-04-01", last_active_at: "2026-11-27T07:58:00+09:00" },
   { id: "u-kobayashi", name: "小林 直人", initials: "小", email: "kobayashi@sample-soft.example", roles: ["開発者"], kind: "member", status: "invited", joined_at: undefined },
   { id: "u-kato", name: "加藤 遥", initials: "加", email: "kato@sample-soft.example", roles: ["QA"], kind: "member", status: "disabled", joined_at: "2025-04-01", last_active_at: "2026-06-30T18:00:00+09:00" },
-  { id: "u-nakamura", name: "中村 拓也", initials: "中", email: "nakamura@kakuu-shoji.example", roles: ["顧客"], kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-05-20", last_active_at: "2026-11-26T15:20:00+09:00" },
+  { id: "u-nakamura", name: "中村 拓也", initials: "中", email: "nakamura@kakuu-shoji.example", roles: ["顧客", "発注側プロジェクト責任者"], title: "業務改革課長", kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-05-20", last_active_at: "2026-11-26T15:20:00+09:00" },
   { id: "u-assessor", name: "評価者 A", initials: "評", email: "assessor@review-office.example", roles: ["評価者"], kind: "external", status: "active", company: "第三者評価事務所（架空）" },
+  { id: "u-matsuda", name: "松田 亮", initials: "松", email: "matsuda@freelance.example", roles: ["フリーエンジニア"], title: "フリーエンジニア", account: true, kind: "external", status: "active", company: "個人事業主", external_ids: [{ provider: "github", handle: "ryo-matsuda" }], joined_at: "2026-09-01", last_active_at: "2026-11-27T09:30:00+09:00" },
+  { id: "u-hayashi", name: "林 由香", initials: "林", email: "hayashi@freelance.example", roles: ["フリーエンジニア"], title: "フリーエンジニア", account: true, kind: "external", status: "active", company: "個人事業主", external_ids: [{ provider: "gitlab", handle: "yhayashi" }], joined_at: "2026-10-10", last_active_at: "2026-11-26T22:10:00+09:00" },
+  { id: "u-ogawa", name: "小川 純", initials: "小", email: "ogawa@freelance.example", roles: ["フリーエンジニア"], title: "フリーエンジニア", account: true, kind: "external", status: "invited", company: "個人事業主", external_ids: [{ provider: "github", handle: "jun-ogawa" }] },
+  { id: "u-komatsu", name: "小松 恵", initials: "恵", email: "komatsu@kakuu-shoji.example", roles: ["発注側承認者"], title: "情報システム部長（予算責任者）", account: true, kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-05-20" },
+  { id: "u-noguchi", name: "野口 舞", initials: "野", email: "noguchi@kakuu-shoji.example", roles: ["発注側検収者", "発注側担当者"], title: "業務改革課", account: true, kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-06-01" },
+  { id: "u-sakai", name: "酒井 隆", initials: "酒", email: "sakai@kakuu-shoji.example", roles: ["発注側署名者", "発注側管理者"], title: "法務部長", account: true, kind: "external", status: "active", company: "架空商事株式会社", joined_at: "2026-05-20" },
+  { id: "u-fujii", name: "藤井 晃", initials: "藤", email: "fujii@kakuu-retail.example", roles: ["発注側プロジェクト責任者", "発注側署名者"], title: "デジタル推進室長", account: true, kind: "external", status: "active", company: "架空リテール株式会社", joined_at: "2026-06-01" },
+  { id: "u-aoki", name: "青木 さくら", initials: "青", email: "desk@product.example", roles: ["案件窓口"], title: "案件窓口", account: true, kind: "member", status: "active", company: "本サービス", joined_at: "2026-04-01", last_active_at: "2026-11-27T10:25:00+09:00" },
   { id: "u-agent", name: "coding-agent", initials: "AI", email: "", roles: [], kind: "agent", status: "active" },
 ];
 
@@ -84,7 +92,7 @@ export const projects: Project[] = [
     next_release: { version: "v1.4.0", date: "2026-12-10" }, member_ids: ["u-sato", "u-takahashi", "u-tanaka", "u-suzuki", "u-ito", "u-watanabe", "u-nakamura"], updated_at: "2026-11-27T09:40:00+09:00",
   },
   {
-    id: "p2", slug: "member-app-api", name: "会員アプリ API 開発", customer: "テスト物流株式会社", phase: "design",
+    id: "p2", slug: "member-app-api", name: "会員アプリ API 開発", customer: "架空リテール株式会社", phase: "design",
     control_pack: "Basic Control Pack", pack_version: "1.2.1", pack_outdated: true, enforcement: "warnOnly", data_class: "internal",
     repos: ["sample-soft/member-app-api"], main_gates: { A: "pass", B: "warn", C: "notRun", D: "pass" },
     trace_linked: 12, trace_total: 20, open_risks: 2, open_changes: 1, blocked_prs: 0, active_exceptions: 0,

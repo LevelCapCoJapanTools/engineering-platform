@@ -63,6 +63,7 @@ export const paths = {
   sources: (org: string) => `${o(org)}/connector-sources`,
   deliveries: (org: string) => `${o(org)}/connector-events`,
   importDiag: (org: string) => `${o(org)}/connector-import`,
+  referenceMatching: (org: string) => `${o(org)}/connector-references`,
 
   // 通知とオンコール
   channels: (org: string) => `${o(org)}/notify/channels`,
@@ -73,6 +74,21 @@ export const paths = {
   escalation: (org: string) => `${o(org)}/oncall/escalation`,
   incidents: (org: string) => `${o(org)}/incidents`,
   incident: (org: string, id: string) => `${o(org)}/incidents/${id}`,
+
+  // 案件窓口（2026-11-28 追補）
+  desk: (org: string) => `${o(org)}/desk`,
+  deskInquiry: (org: string, id: string) => `${o(org)}/desk/inquiries/${id}`,
+  deskOutbound: (org: string) => `${o(org)}/desk/outbound`,
+  deskAssignments: (org: string) => `${o(org)}/desk/assignments`,
+  deskReports: (org: string) => `${o(org)}/desk/reports`,
+  deskChange: (org: string, id: string) => `${o(org)}/desk/changes/${id}`,
+
+  // 受託者への発注（2026-11-28 追補）
+  orders: (org: string) => `${o(org)}/orders`,
+  orderNew: (org: string) => `${o(org)}/orders-new`,
+  order: (org: string, id: string) => `${o(org)}/orders/${id}`,
+  partners: (org: string) => `${o(org)}/partners`,
+  settlements: (org: string) => `${o(org)}/settlements`,
 
   // プロジェクト: 計画と管理
   project: (org: string, pr: string) => p(org, pr),
@@ -90,6 +106,27 @@ export const paths = {
   milestones: (org: string, pr: string) => `${p(org, pr)}/milestones`,
   closure: (org: string, pr: string) => `${p(org, pr)}/closure`,
   documents: (org: string, pr: string) => `${p(org, pr)}/documents`,
+  workBreakdown: (org: string, pr: string) => `${p(org, pr)}/work-breakdown`,
+  projectCost: (org: string, pr: string) => `${p(org, pr)}/cost`,
+  // 顧客への公開と共同経営
+  relationship: (org: string, pr: string) => `${p(org, pr)}/relationship`,
+  disclosure: (org: string, pr: string) => `${p(org, pr)}/disclosure`,
+  disclosurePreview: (org: string, pr: string) => `${p(org, pr)}/disclosure-preview`,
+  disclosureHistory: (org: string, pr: string) => `${p(org, pr)}/disclosure-history`,
+  jointFinance: (org: string, pr: string) => `${p(org, pr)}/joint-finance`,
+  // 契約・知的資産
+  contracts: (org: string, pr: string) => `${p(org, pr)}/contracts`,
+  contract: (org: string, pr: string, id: string) => `${p(org, pr)}/contracts/${id}`,
+  ipAssets: (org: string, pr: string) => `${p(org, pr)}/ip`,
+  ipAsset: (org: string, pr: string, id: string) => `${p(org, pr)}/ip/${id}`,
+  licenses: (org: string, pr: string) => `${p(org, pr)}/licenses`,
+  rightsHandover: (org: string, pr: string) => `${p(org, pr)}/rights-handover`,
+  // アプリの配信名義・引き渡し
+  appHandover: (org: string, pr: string) => `${p(org, pr)}/app-handover`,
+  appEnrollment: (org: string, pr: string) => `${p(org, pr)}/app-handover/enrollment`,
+  appInvitations: (org: string, pr: string) => `${p(org, pr)}/app-handover/invitations`,
+  appTransfer: (org: string, pr: string) => `${p(org, pr)}/app-handover/transfer`,
+  appOperations: (org: string, pr: string) => `${p(org, pr)}/app-handover/operations`,
 
   // 要求・設計・トレーサビリティ
   requirements: (org: string, pr: string) => `${p(org, pr)}/requirements`,
@@ -122,6 +159,11 @@ export const paths = {
   release: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}`,
   acceptance: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/acceptance`,
   baselines: (org: string, pr: string) => `${p(org, pr)}/baselines`,
+  submissionsMatch: (org: string, pr: string) => `${p(org, pr)}/submissions`,
+  releaseCandidate: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/candidate`,
+  executionPermit: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/permit`,
+  deployment: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/deploy`,
+  rollback: (org: string, pr: string, id: string) => `${p(org, pr)}/releases/${id}/rollback`,
 
   // 証跡と監査
   audit: (org: string, pr: string) => `${p(org, pr)}/audit`,
@@ -131,6 +173,7 @@ export const paths = {
   auditLog: (org: string, pr: string) => `${p(org, pr)}/audit-log`,
   auditExport: (org: string, pr: string) => `${p(org, pr)}/audit-export`,
   shares: (org: string, pr: string) => `${p(org, pr)}/shares`,
+  tradeEvidence: (org: string, pr: string) => `${p(org, pr)}/trade-evidence`,
 
   // ポリシー
   policies: (org: string) => `${o(org)}/policies`,
@@ -155,6 +198,8 @@ export const paths = {
   aiEval: (org: string) => `${o(org)}/settings/ai-eval`,
   usage: (org: string) => `${o(org)}/settings/usage`,
   signing: (org: string) => `${o(org)}/settings/signing`,
+  tradeScopes: (org: string) => `${o(org)}/settings/trade-scopes`,
+  aiMediation: (org: string) => `${o(org)}/settings/ai-mediation`,
   me: () => "/me",
 
   // 外部利用者
@@ -165,6 +210,25 @@ export const paths = {
   review: (token: string) => `/review/${token}`,
   partner: () => "/partner",
   approvalLink: (token: string) => `/approve/${token}`,
+  // 顧客ポータルの拡張（2026-11-28 追補）
+  portalSchedule: (pr: string) => `/portal/${pr}/schedule`,
+  portalRequests: (pr: string) => `/portal/${pr}/requests`,
+  portalRequest: (pr: string, id: string) => `/portal/${pr}/requests/${id}`,
+  portalRouting: (pr: string) => `/portal/${pr}/routing`,
+  portalMaterials: (pr: string) => `/portal/${pr}/materials`,
+  portalContracts: (pr: string) => `/portal/${pr}/contracts`,
+  portalContract: (pr: string, id: string) => `/portal/${pr}/contracts/${id}`,
+  portalHandover: (pr: string) => `/portal/${pr}/handover`,
+  portalJoint: (pr: string) => `/portal/${pr}/joint`,
+
+  // フリーエンジニア（2026-11-28 追補）
+  freelancerInvite: (token: string) => `/f/invite/${token}`,
+  freelancerHome: () => "/f",
+  freelancerOrder: (id: string) => `/f/orders/${id}`,
+  freelancerSubmit: (id: string) => `/f/orders/${id}/submit`,
+  freelancerResult: (id: string) => `/f/orders/${id}/result`,
+  freelancerQuestions: () => "/f/questions",
+  freelancerHistory: () => "/f/history",
 
   // 共通の状態画面
   notFound: () => "/404",

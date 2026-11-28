@@ -9,6 +9,7 @@ import { NOW } from "../../lib/format";
 import { AppLayout, crumbs, DataTable, ErrorState, ExternalActor, FilterBar, PageHeader, Skeleton, SourceTag, StatCard, StatusBadge, Tag, Timestamp } from "../../ui";
 import { incidents } from "../../mocks/portfolio";
 import { OncallTabs, SeverityBadge, useOrg } from "./parts";
+import { MaintenanceSection } from "./oncall2";
 
 const REPO: Record<string, string> = { "受発注 API": "sample-soft/order-api", "会員アプリ API": "member-app/api", "証跡の保管": "—" };
 
@@ -74,6 +75,7 @@ export function N06Incidents() {
             ]}
             empty={<div className="empty"><h3>インシデントはありません</h3><p>オンコール管理サービスで起票されると表示されます。</p></div>}
           />
+          <MaintenanceSection />
         </>
       )}
     </AppLayout>

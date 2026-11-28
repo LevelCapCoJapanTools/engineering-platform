@@ -1,8 +1,11 @@
 // 画面ID: L-02 リリース詳細・リリースゲート
+import "../delivery/delivery.css";
 import { useState } from "react";
 import { navigate, useScreenState } from "../../lib/router";
 import { paths } from "../../lib/paths";
-import { APPROVAL_STATUS, DECISION_STATUS, GATE_STATUS, RELEASE_STATUS } from "../../lib/vocab";
+import { APPROVAL_STATUS, DECISION_STATUS, DEPLOY_STATUS, GATE_STATUS, RELEASE_STATUS } from "../../lib/vocab";
+import type { DeployStatus } from "../../lib/vocab";
+import { candidateFixed, permitPinned } from "../../mocks/delivery";
 import type { ReleaseStatus } from "../../lib/vocab";
 import type { Approver } from "../../lib/types";
 import { formatDate } from "../../lib/format";
@@ -59,6 +62,10 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
   const unmet = checklist.filter((c) => c.state !== "ok").length;
   const arts = artifacts(released);
   const gate = ready ? "pass" : base.gate;
+  // 配備の状態。外部の実行結果を照合するまで「公開済み」と表示しない（改修 27）
+  const deploy: DeployStatus = state === "released" ? "succeeded" : state === "ready" ? "permitted" : state === "decided" ? "notReady" : "notReady";
+  const candidateIsFixed = state !== "default";
+  const permitIssued = state === "ready" || state === "released";
 
   const approvers: Approver[] = [
     { role: "リリース管理者", user_id: "u-watanabe", status: released ? "approved" : "pending", decided_at: released ? "2026-11-05T16:30:00+09:00" : undefined },
@@ -79,6 +86,31 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
       ) : !released ? (
         <Banner tone="pass" title="リリースゲートのチェックをすべて満たしています">リリース管理者と PM の承認後に、成果物へ署名して Evidence Manifest を保管します。</Banner>
       ) : null}
+      {released && deploy !== "succeeded" ? (
+        <Banner tone="warn" title="リリースは承認済みですが、配備の結果を確認していません">外部の実行IDで配備の結果を照合するまで「公開済み」とは表示せず、顧客への完了通知も送りません。</Banner>
+      ) : null}
+      <Section title="配備までの流れ" sub="候補の固定 → 実行許可 → 配備依頼と完了確認。各段階は別の記録です">
+        <div className="dl-flow">
+          <div>
+            <span className="tiny muted">1. リリース候補</span>
+            {candidateIsFixed ? <Tag tone="pass" icon="lock">{candidateFixed.id} を固定済み</Tag> : <Tag tone="warn">選択中</Tag>}
+            <span className="tiny muted">受託者の提出と社内の変更から、入れるものだけを選びます</span>
+            <Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.releaseCandidate(org, project, base.id)}>候補を開く</Button>
+          </div>
+          <div>
+            <span className="tiny muted">2. 実行許可</span>
+            {permitIssued ? <Tag tone="pass" icon="shieldCheck">{permitPinned.id} 発行済み</Tag> : <Tag tone="warn">回収中</Tag>}
+            <span className="tiny muted">承認・判断・成果版・ルール版・環境がそろうと発行します</span>
+            <Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.executionPermit(org, project, base.id)}>実行許可を開く</Button>
+          </div>
+          <div>
+            <span className="tiny muted">3. 配備</span>
+            <StatusBadge vocab={DEPLOY_STATUS[deploy]} size="sm" />
+            <span className="tiny muted">事前登録した外部の手順だけを起動し、結果を照合します</span>
+            <Button size="sm" variant="ghost" iconRight="arrowRight" to={paths.deployment(org, project, base.id)}>配備を開く</Button>
+          </div>
+        </div>
+      </Section>
       <Section title="リリースゲート" sub="判定の主体（CI／人間）を項目ごとに表示します" actions={<StatusBadge vocab={GATE_STATUS[gate]} />}>
         <ChecklistPanel items={checklist} title="チェック項目" />
       </Section>
@@ -234,6 +266,8 @@ export function ReleaseDetailScreen({ org, project, id }: { org: string; project
             { label: "予定日", value: formatDate(base.planned_at) },
             { label: "Evidence Manifest", value: base.manifest_id ? <IdLink id={base.manifest_id} to={paths.manifest(org, project, base.manifest_id)} /> : <span className="muted">リリース承認後に作成</span> },
             { label: "署名", value: <SignatureBadge state={released ? "verified" : "unsigned"} /> },
+            { label: "配備", value: <StatusBadge vocab={DEPLOY_STATUS[deploy]} size="sm" /> },
+            { label: "公開", value: deploy === "succeeded" ? <Tag tone="pass" icon="check">公開済み（配備確認済み）</Tag> : <Tag icon="clock">配備の確認後に表示</Tag> },
           ]}
         />
       </MetaSection>

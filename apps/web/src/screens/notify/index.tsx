@@ -23,5 +23,5 @@ export const notifyScreens: ScreenDef[] = [
   { id: "N-06", title: "インシデント一覧", path: paths.incidents(org), group, priority: "Should", states: ["通常", "空", "読み込み中", "エラー"], render: () => <N06Incidents /> },
   { id: "N-07", title: "インシデント詳細", path: paths.incident(org, ":id"), group, priority: "Should", states: ["通常", "未受領（エスカレーション中）", "受領済み", "解決", "配信失敗", "当番として操作", "読み込み中", "エラー"], render: () => <N07Incident /> },
   { id: "N-08", title: "エスカレーションと訓練", path: paths.escalation(org), group, priority: "Should", states: ["通常", "期限切れあり", "訓練なし", "読み込み中", "エラー"], render: () => <N08Escalation /> },
-  { id: "N-09", title: "チャットでの表示", path: paths.chatCards(), group, priority: "Should", states: ["経営判断の依頼", "インシデント", "同期の停止", "マイルストーンの遅延"], render: () => <N09ChatCards /> },
+  { id: "N-09", title: "チャットでの表示", path: paths.chatCards(), group, priority: "Should", states: ["経営判断の依頼", "受託者への依頼", "顧客への申請", "インシデント", "同期の停止", "マイルストーンの遅延"], render: () => <N09ChatCards /> },
 ];

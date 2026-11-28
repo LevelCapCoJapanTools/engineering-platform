@@ -6,6 +6,7 @@ import { PROVIDERS } from "../../lib/vocab";
 import { AppLayout, Banner, Button, crumbs, EmptyState, ErrorState, PageHeader, ProviderBadge, Section, Skeleton, SyncBadge, Tag, Timestamp, useToast } from "../../ui";
 import { channels } from "../../mocks/notify";
 import { CapabilityTags, NotifyTabs, useOrg, userName } from "./parts";
+import { AudienceRulesSection, SendOnlyNotice } from "./audience";
 
 export function N01Channels() {
   const state = useScreenState();
@@ -104,6 +105,8 @@ export function N01Channels() {
               ))}
             </div>
           </Section>
+          <SendOnlyNotice />
+          <AudienceRulesSection org={org} compact />
         </>
       )}
     </AppLayout>

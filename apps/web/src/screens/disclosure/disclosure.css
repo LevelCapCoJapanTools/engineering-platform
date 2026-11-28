@@ -1,0 +1,23 @@
+/* 顧客への公開と共同経営（接頭辞 dc-） */
+.dc-title { font-size: var(--text-lg); font-weight: 650; color: var(--text-strong); }
+.select.sm { width: auto; min-height: 30px; padding: 3px 8px; font-size: var(--text-xs); max-width: 100%; }
+.dc-items { display: flex; flex-direction: column; }
+.dc-item { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: 10px var(--space-4); border-top: 1px solid var(--border); flex-wrap: wrap; }
+.dc-item:first-child { border-top: 0; }
+.dc-item > :first-child { min-width: 0; flex: 1 1 240px; }
+.dc-item.blocked { background: var(--bg-subtle); }
+.dc-item-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dc-reason { display: inline-flex; align-items: center; gap: 4px; color: var(--muted-strong); }
+.dc-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.dc-preview { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: var(--space-3); background: var(--bg-subtle); }
+.dc-preview-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dc-preview-row > :first-child { min-width: 150px; }
+.dc-code { margin: 0; padding: var(--space-3); border-radius: var(--radius-sm); background: var(--bg-sunken); font-family: var(--font-mono); font-size: var(--text-xs); white-space: pre-wrap; word-break: break-all; }
+.dc-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dc-checks li { display: flex; align-items: flex-start; gap: 8px; }
+.dc-checks li.ok svg { color: var(--tone-pass); flex: none; margin-top: 2px; }
+.dc-checks li.ng svg { color: var(--tone-fail); flex: none; margin-top: 2px; }
+.dc-checks li.ng .strong { color: var(--tone-fail); }
+.dc-approvals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dc-approvals li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.dc-approvals li.mine { border-color: var(--primary); background: var(--primary-tint); }

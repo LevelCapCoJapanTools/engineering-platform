@@ -7,6 +7,7 @@ import type { Role } from "../../lib/vocab";
 import { actorMappings } from "../../mocks/settings";
 import type { ActorMapping } from "../../mocks/settings";
 import { Banner, Button, Combobox, EmptyState, ErrorState, FilterBar, Modal, ProviderBadge, RoleBadge, Section, SettingsLayout, Skeleton, Tag, TextField, useToast } from "../../ui";
+import { ExternalInvitesSection } from "./trade2";
 
 const STATUS: Record<ActorMapping["status"], { label: string; tone: "pass" | "warn" | "fail" | "neutral" }> = {
   active: { label: "対応付け済み", tone: "pass" },
@@ -148,6 +149,7 @@ export function S09Actors({ org = ORG }: { org?: string }) {
               ))}
             </Section>
           ) : null}
+          <ExternalInvitesSection org={org} compact />
         </>
       )}
 

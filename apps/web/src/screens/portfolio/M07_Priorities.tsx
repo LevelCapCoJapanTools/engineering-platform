@@ -8,6 +8,7 @@ import { DEFAULT_WEIGHTS, PRIORITY_AXES, priorityHistory, priorityItems, scenari
 import type { PriorityAxis } from "../../mocks/investment";
 import { AppLayout, Banner, Button, crumbs, EmptyState, ErrorState, IdLink, Modal, PageHeader, Section, Segmented, Skeleton, StatusBadge, Tag, TextArea, useToast } from "../../ui";
 import { RoleNote, ScoreDots, userName } from "./parts";
+import { AllocationOptions } from "../orders/embeds";
 
 function score(scores: Record<PriorityAxis, number>, weights: Record<PriorityAxis, number>) {
   let total = 0;
@@ -25,7 +26,7 @@ export function Priorities() {
   const org = useRoute().params.org ?? ORG;
   const toast = useToast();
   const [weights, setWeights] = useState<Record<PriorityAxis, number>>(DEFAULT_WEIGHTS);
-  const [view, setView] = useState(state === "scenario" ? "scenario" : "compare");
+  const [view, setView] = useState(state === "scenario" ? "scenario" : state === "allocation" ? "allocation" : "compare");
   const [scenario, setScenario] = useState("B");
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -45,7 +46,7 @@ export function Priorities() {
         title="優先順位とシナリオ比較"
         description="進行中の案件と審議中の事業ケースを共通の軸で比べ、限られた予算・要員をどこに使うかを判断します。順位の変更は経営判断として記録されます。"
         actions={<Button variant="primary" icon="check" disabled={!changed} disabledReason="現在の順位から変更がありません" onClick={() => setOpen(true)}>順位の変更を判断する</Button>}
-        tabs={<Segmented value={view} onChange={setView} options={[{ value: "compare", label: "共通軸で比較" }, { value: "scenario", label: "シナリオ比較" }, { value: "history", label: "順位変更の記録" }]} />}
+        tabs={<Segmented value={view} onChange={setView} options={[{ value: "compare", label: "共通軸で比較" }, { value: "scenario", label: "シナリオ比較" }, { value: "allocation", label: "配分案（外注・分割・延期）" }, { value: "history", label: "順位変更の記録" }]} />}
       />
       {state === "empty" ? (
         <div className="card"><EmptyState icon="sort" title="比較できる案件がありません" description="プロジェクトを作成するか、事業ケースを登録すると比較できます。" action={<Button to={paths.intake(org)}>案件受付へ</Button>} /></div>
@@ -104,6 +105,8 @@ export function Priorities() {
           </div>
           {changed ? <Banner tone="info" title="重みの変更で順位が変わりました">影響（遅れるマイルストーン、要員の競合）はシナリオ比較で確認してから判断してください。</Banner> : null}
         </div>
+      ) : view === "allocation" ? (
+        <AllocationOptions org={org} />
       ) : view === "scenario" ? (
         <div className="stack">
           <Segmented value={scenario} onChange={setScenario} options={scenarios.map((s) => ({ value: s.key, label: `シナリオ ${s.key}` }))} />

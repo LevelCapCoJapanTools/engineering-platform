@@ -11,3 +11,26 @@
   .assessor-toc button.active { border-bottom-color: var(--primary); }
 }
 .org-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+
+/* 顧客ポータルの拡張（X-01, X-07〜X-11。接頭辞 cp-） */
+.cp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cp-list > li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cp-list > li.row { flex-direction: row; }
+.cp-sched { flex-direction: row !important; flex-wrap: wrap; align-items: center; gap: 8px !important; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.cp-sched:last-child { border-bottom: 0; padding-bottom: 0; }
+.cp-route { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.cp-route-step { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 180px; flex: 1 1 180px; }
+.cp-route-step.waiting { border-color: var(--tone-warn-border, var(--tone-warn)); background: var(--tone-warn-bg); }
+.cp-route-step.done { background: var(--tone-pass-bg); }
+.cp-route-num { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); font-size: 11px; font-weight: 600; }
+.cp-route-step.done .cp-route-num { background: var(--tone-pass); color: #fff; border-color: var(--tone-pass); }
+.cp-request { display: flex; flex-direction: column; gap: 8px; text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+.cp-request:hover { border-color: var(--primary); }
+.cp-request-meta { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.cp-request-meta > span { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.cp-note { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.cp-thread { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cp-thread > li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: var(--radius); background: var(--bg-subtle); max-width: 85%; }
+.cp-thread > li.mine { align-self: flex-end; background: var(--primary-tint); }
+.cp-uat { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.cp-uat:last-child { border-bottom: 0; padding-bottom: 0; }

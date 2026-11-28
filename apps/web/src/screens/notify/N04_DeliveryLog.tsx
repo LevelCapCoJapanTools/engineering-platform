@@ -41,6 +41,9 @@ export function N04DeliveryLog() {
             <StatCard label="失敗・再処理待ち" value={count(["failed", "deadLetter"])} unit="件" tone="danger" delta="管理者に代替通知済み" />
             <StatCard label="集約・抑止" value={count(["suppressed"])} unit="件" delta="重複キー・上限による" />
           </div>
+          <Banner tone="info" title="宛先の範囲を超える送信はしません">
+            受託者向けの通知は本人だけに、顧客向けは承認済みの公開範囲の項目だけで送ります。公開停止・提携終了・担当交代のときは、送信待ちの通知を取り消して「公開停止により取消」と記録します。配信に失敗したときは再試行し、上限に達したら代替の経路（メール・アプリ内）へ送ります。
+          </Banner>
           {count(["deadLetter"]) > 0 ? (
             <Banner tone="warn" title="再処理待ちの通知があります" action={<Button size="sm" icon="refresh" onClick={() => toast({ kind: "success", message: "再処理待ちの 1 件を再送しました" })}>まとめて再送</Button>}>
               再試行の上限に達した通知です。チャネルを直してから再送してください。1 つの宛先の障害は、ほかの宛先への配信やゲートの判定を止めません。

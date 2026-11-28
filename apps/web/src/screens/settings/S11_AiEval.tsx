@@ -5,6 +5,7 @@ import { ORG } from "../../lib/paths";
 import { yen } from "../../lib/format";
 import { adversarialCases, aiEvalByKind, aiEvalRuns } from "../../mocks/settings";
 import { Banner, Button, EmptyState, ErrorState, Section, SettingsLayout, Skeleton, Tag, Timestamp, useToast } from "../../ui";
+import { MediationEvalSection } from "./trade2";
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -110,6 +111,7 @@ export function S11AiEval({ org = ORG }: { org?: string }) {
               </div>
             </Section>
           </div>
+          <MediationEvalSection />
         </>
       )}
     </SettingsLayout>

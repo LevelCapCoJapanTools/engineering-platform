@@ -9,6 +9,7 @@ import { K05Mapping } from "./K05_Mapping";
 import { K06Sources } from "./K06_Sources";
 import { K07Deliveries } from "./K07_Deliveries";
 import { K08ImportDiag } from "./K08_ImportDiag";
+import { K09ReferenceMatching } from "./K09_ReferenceMatching";
 
 const group = "6.16 連携と同期";
 
@@ -21,4 +22,5 @@ export const connectorScreens: ScreenDef[] = [
   { id: "K-06", title: "正本と同期ルール", path: paths.sources(":org"), group, priority: "Must", states: ["default", "conflict", "loading", "error"], render: () => <K06Sources /> },
   { id: "K-07", title: "受信イベントと再同期", path: paths.deliveries(":org"), group, priority: "Must", states: ["default", "empty", "loading", "error"], render: () => <K07Deliveries /> },
   { id: "K-08", title: "初期インポートと診断", path: paths.importDiag(":org"), group, priority: "Should", states: ["default", "running", "clean", "loading", "error"], render: () => <K08ImportDiag /> },
+  { id: "K-09", title: "成果参照の照合（提供元別）", path: paths.referenceMatching(":org"), group, priority: "Must", states: ["default", "mismatch", "empty", "loading", "error"], render: () => <K09ReferenceMatching /> },
 ];

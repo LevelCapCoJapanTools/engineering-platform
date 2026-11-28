@@ -5,6 +5,7 @@ import { AppLayout, Banner, Button, crumbs, EmptyState, ErrorState, ExternalActo
 import { connectors } from "../../mocks/portfolio";
 import { onCallShifts } from "../../mocks/notify";
 import { OncallTabs, useOrg } from "./parts";
+import { AckMethodsSection, CoverageSection } from "./oncall2";
 
 export function N05Oncall() {
   const state = useScreenState();
@@ -76,6 +77,8 @@ export function N05Oncall() {
             </Section>
           ))}
           <p className="tiny muted">退職・無効化された人は、外部IDの対応付けから外れた時点で当番の警告に表示します。当番表からの削除は提供元で行います。</p>
+          <CoverageSection />
+          <AckMethodsSection />
         </>
       )}
     </AppLayout>

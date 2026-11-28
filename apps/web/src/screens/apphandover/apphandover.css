@@ -1,0 +1,15 @@
+/* アプリの引き渡し画面群（接頭辞 ah-） */
+.ah-steps { margin-bottom: var(--space-2); }
+.ah-boundary { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--bg-subtle); }
+.ah-boundary svg { flex: none; margin-top: 2px; color: var(--muted-strong); }
+.ah-methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.ah-method { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); min-width: 0; }
+.ah-method.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+.ah-method.disabled { opacity: .55; }
+.ah-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.ah-two > * { min-width: 0; }
+.ah-party { display: flex; flex-direction: column; gap: 8px; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.ah-receipt { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--tone-pass-bg); border: 1px solid var(--tone-pass-border, var(--border)); }
+@media (max-width: 860px) {
+  .ah-methods, .ah-two { grid-template-columns: 1fr; }
+}

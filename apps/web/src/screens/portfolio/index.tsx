@@ -18,7 +18,7 @@ export const portfolioScreens: ScreenDef[] = [
   { id: "M-04", title: "案件受付", path: paths.intake(org), group, priority: "Must", states: ["default", "filtered", "empty", "loading", "error"], render: () => <Intake /> },
   { id: "M-05", title: "事業ケースの作成", path: paths.intakeNew(org), group, priority: "Must", states: ["default", "filled", "missing", "submitted"], render: () => <IntakeNew /> },
   { id: "M-06", title: "事業ケースの詳細・判断", path: paths.businessCase(org, ":id"), group, priority: "Must", states: ["default", "reviewing", "approved", "onHold", "rejected", "forbidden", "loading", "error"], render: (p) => <BusinessCaseDetail key={p.id} id={p.id} /> },
-  { id: "M-07", title: "優先順位とシナリオ比較", path: paths.priorities(org), group, priority: "Must", states: ["default", "scenario", "changed", "empty", "loading", "error"], render: () => <Priorities /> },
+  { id: "M-07", title: "優先順位とシナリオ比較", path: paths.priorities(org), group, priority: "Must", states: ["default", "scenario", "allocation", "changed", "empty", "loading", "error"], render: () => <Priorities /> },
   { id: "M-08", title: "要員・予算の配分", path: paths.capacity(org), group, priority: "Must", states: ["default", "empty", "loading", "error"], render: () => <Capacity /> },
   { id: "M-09", title: "戦略ロードマップ", path: paths.roadmap(org), group, priority: "Must", states: ["default", "empty", "loading", "error"], render: () => <Roadmap /> },
   { id: "M-10", title: "便益・成果", path: paths.benefits(org), group, priority: "Should", states: ["default", "empty", "loading", "error"], render: () => <Benefits /> },

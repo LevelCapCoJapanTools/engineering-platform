@@ -1,0 +1,36 @@
+/* 受託者への発注と採算（B-01〜B-07）。クラス名は ord- で始める */
+.ord-internal { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.ord-ai { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--tone-special-bg); }
+.ord-kv { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ord-kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3) var(--space-4); }
+.ord-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); }
+.ord-check.ok { color: var(--tone-pass); }
+.ord-check.ng { color: var(--tone-fail); }
+.ord-missing { margin: 0; padding-left: 1.2em; }
+.ord-missing li { color: var(--tone-fail); font-size: var(--text-sm); }
+.ord-terms { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.ord-terms > * { min-width: 0; }
+.ord-diff-old { text-decoration: line-through; color: var(--muted); }
+.ord-diff-new { color: var(--tone-special); font-weight: 600; }
+.ord-thread { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ord-thread li { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: baseline; }
+.ord-thread li > * { min-width: 0; }
+.ord-bar { position: relative; height: 10px; border-radius: 5px; background: var(--bg-sunken); overflow: hidden; }
+.ord-bar > span { position: absolute; top: 0; bottom: 0; }
+.ord-bar .inspected { background: var(--tone-pass); }
+.ord-bar .accepted { background: var(--tone-info); }
+.ord-bar .offered { background: repeating-linear-gradient(45deg, var(--tone-warn) 0 5px, transparent 5px 9px); }
+.ord-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ord-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ord-swatch { display: inline-block; width: 14px; height: 8px; border-radius: 4px; }
+.ord-swatch.inspected { background: var(--tone-pass); }
+.ord-swatch.accepted { background: var(--tone-info); }
+.ord-swatch.offered { background: repeating-linear-gradient(45deg, var(--tone-warn) 0 3px, transparent 3px 6px); border: 1px solid var(--tone-warn); }
+.ord-swatch.unassigned { background: var(--bg-sunken); border: 1px solid var(--border-strong); }
+.ord-wp { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+.ord-wp > * { min-width: 0; }
+.ord-wp-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.ord-wp-card.unassigned { border-style: dashed; border-color: var(--tone-warn); }
+.ord-conflict { border: 1px solid var(--tone-warn-border, var(--border)); border-left: 4px solid var(--tone-warn); border-radius: var(--radius-sm); padding: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.ord-records { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 640px) { .ord-terms { grid-template-columns: 1fr; } }

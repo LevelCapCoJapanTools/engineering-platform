@@ -13,6 +13,7 @@ import { currentUser, users } from "../../mocks/core";
 import { escalationPolicies, incidentTimeline } from "../../mocks/notify";
 import { cx } from "../../ui";
 import { OncallTabs, SeverityBadge, useOrg } from "./parts";
+import { DeliveryVsAckSection } from "./oncall2";
 
 const STATE_FIXTURE: Record<string, string> = { "未受領（エスカレーション中）": "INC-0111", 受領済み: "INC-0112", 解決: "INC-0108", 配信失敗: "INC-0111", 当番として操作: "INC-0111" };
 
@@ -108,6 +109,7 @@ export function N07Incident() {
                 })}
               </ol>
             </Section>
+            <DeliveryVsAckSection status={inc.status} />
             <Section title="経過" sub="受領・引継ぎ・更新・解決は、操作した本人（外部IDで照合）と時刻を記録します">
               <ol className="nt-events">
                 {events.map((e, i) => (
