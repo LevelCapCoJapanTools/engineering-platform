@@ -52,4 +52,6 @@ DATABASE_URL=postgres://engineering:local-dev-only@127.0.0.1:55432/engineering \
 
 全サービスの起動後、ルートで `node scripts/smoke.mjs` を実行すると、Webプロキシ経由で4シナリオを処理し、証跡まで検証します。ポートを変えた場合は `API_URL` と `WEB_URL` を指定してください。
 
+GitHub Webhook の受信口 `POST /api/v1/webhooks/github` は、環境変数 `EP_GITHUB_WEBHOOK_SECRET` を設定したときだけ有効になります。署名（`X-Hub-Signature-256`）を検証できない配信は保存せず、同じ配信IDの再送と、同じリソースの古い版は状態に反映しません。Compose ではローカル検証専用の値を設定しており、スモークテストがこの動作も確認します。
+
 ComposeをDBだけに使う場合は、上記の `DATABASE_URL` と `EP_DEMO_MODE=1` を設定し、別ターミナルで `cargo run --locked -p server` と `cargo run --locked -p worker` を順に起動します。最後に `apps/web` で `npm run dev` を起動します。

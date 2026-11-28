@@ -1,6 +1,10 @@
+pub mod decision;
 pub mod evidence;
 pub mod gate;
 pub mod github;
+pub mod schedule;
+pub mod sync;
+pub mod webhook;
 pub mod workflow;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
